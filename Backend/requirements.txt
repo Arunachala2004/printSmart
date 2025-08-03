@@ -1,0 +1,52 @@
+# Django and REST Framework
+Django==4.2.7
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+django-filter==23.3
+
+# Authentication & JWT
+djangorestframework-simplejwt==5.3.0
+PyJWT==2.8.0
+
+# File Processing
+PyMuPDF==1.23.8
+python-docx==0.8.11
+Pillow==10.0.1
+
+# Password Hashing
+bcrypt==4.0.1
+
+# Payment Integration
+razorpay==1.4.1
+
+# Environment Variables
+python-decouple==3.8
+
+# Logging and Monitoring
+structlog==23.2.0
+
+# Development Tools
+django-debug-toolbar==4.2.0
+
+# Task Queue (Optional for heavy operations)
+celery==5.3.4
+redis==5.0.1
+
+# Print Management (Windows)
+pywin32==306
+
+# HTTP Requests
+requests==2.31.0
+
+# Validation
+marshmallow==3.20.1
+
+# Testing
+pytest==7.4.3
+pytest-django==4.5.2
+
+# WSGI Server
+gunicorn==21.2.0
+
+# Static Files
+whitenoise==6.6.0
