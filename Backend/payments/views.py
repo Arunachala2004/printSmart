@@ -164,85 +164,132 @@ def purchase_tokens(request, package_id):
     return render(request, 'payments/purchase_tokens.html', context)
 
 @csrf_exempt
-@require_http_methods(["POST"])
-def payment_success(request):
-    """Handle successful payment from Razorpay"""
-    try:
-        # Get payment details from request
-        razorpay_payment_id = request.POST.get('razorpay_payment_id')
-        razorpay_order_id = request.POST.get('razorpay_order_id')
-        razorpay_signature = request.POST.get('razorpay_signature')
-        order_id = request.POST.get('order_id')
-        
-        if not all([razorpay_payment_id, razorpay_order_id, razorpay_signature, order_id]):
-            return JsonResponse({'success': False, 'message': 'Missing payment parameters'})
-        
-        # Verify payment signature
-        generated_signature = hmac.new(
-            settings.RAZORPAY_KEY_SECRET.encode('utf-8'),
-            f"{razorpay_order_id}|{razorpay_payment_id}".encode('utf-8'),
-            hashlib.sha256
-        ).hexdigest()
-        
-        if generated_signature != razorpay_signature:
-            return JsonResponse({'success': False, 'message': 'Invalid payment signature'})
-        
-        # Get order and process payment
-        order = get_object_or_404(RazorpayOrder, id=order_id)
-        
-        with transaction.atomic():
-            # Update order status
-            order.status = 'paid'
-            order.razorpay_payment_id = razorpay_payment_id
-            order.razorpay_signature = razorpay_signature
-            order.paid_at = timezone.now()
-            order.save()
+def payment_success_view(request):
+    """Handle payment success"""
+    if request.method == 'POST':
+        try:
+            razorpay_order_id = request.POST.get('razorpay_order_id')
+            razorpay_payment_id = request.POST.get('razorpay_payment_id')
+            razorpay_signature = request.POST.get('razorpay_signature')
+            
+            # Verify payment signature
+            params_dict = {
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature
+            }
+            
+            try:
+                razorpay_client.utility.verify_payment_signature(params_dict)
+            except:
+                logger.error("Payment signature verification failed")
+                messages.error(request, 'Payment verification failed. Please contact support.')
+                return redirect('/wallet/')
+            
+            # Get Razorpay order
+            try:
+                razorpay_order = RazorpayOrder.objects.get(razorpay_order_id=razorpay_order_id)
+            except RazorpayOrder.DoesNotExist:
+                logger.error(f"Razorpay order not found: {razorpay_order_id}")
+                messages.error(request, 'Order not found. Please contact support.')
+                return redirect('/wallet/')
+            
+            if razorpay_order.status not in ['created', 'attempted']:
+                logger.warning(f"Order already processed with status: {razorpay_order.status}")
+                messages.warning(request, 'This order has already been processed.')
+                return redirect('/wallet/')
+            
+            user = razorpay_order.user
+            amount = razorpay_order.amount
+            
+            # Create payment record - FIXED: removed payment_type field
+            payment = Payment.objects.create(
+                user=user,
+                amount=amount,
+                payment_method='razorpay',  # Use payment_method instead of payment_type
+                status='completed',
+                provider_payment_id=razorpay_payment_id,
+                provider_order_id=razorpay_order_id,
+                provider_signature=razorpay_signature,
+                description=f"Payment for {razorpay_order.order_type}"
+            )
             
             # Process based on order type
-            if order.order_type == 'wallet_topup':
+            if razorpay_order.order_type == 'wallet_topup':
                 # Add money to wallet
-                order.user.wallet_balance += order.amount
-                order.user.save()
+                user.wallet_balance += amount
+                user.save()
+                success_message = f"₹{amount} added to your wallet successfully!"
+                logger.info(f"Wallet topup successful for user {user.email}: +₹{amount}")
                 
-                # Create payment record
-                Payment.objects.create(
-                    user=order.user,
-                    amount=order.amount,
-                    payment_type='credit',
-                    payment_method='razorpay',
-                    status='completed',
-                    description=f'Wallet top-up via Razorpay - {razorpay_payment_id}'
-                )
-                
-                message = f'₹{order.amount} added to your wallet successfully!'
-                
-            elif order.order_type == 'token_purchase':
+            elif razorpay_order.order_type == 'token_purchase':
                 # Add tokens to user account
-                package = order.token_package
-                order.user.tokens += package.total_tokens
-                order.user.save()
+                logger.info(f"Processing token purchase for user {user.email}")
                 
-                # Create payment record
-                Payment.objects.create(
-                    user=order.user,
-                    amount=order.amount,
-                    payment_type='debit',
-                    payment_method='razorpay',
-                    status='completed',
-                    description=f'Token purchase - {package.name} ({package.total_tokens} tokens)'
-                )
-                
-                message = f'Successfully purchased {package.total_tokens} tokens!'
+                try:
+                    # Get token package from the order
+                    token_package = razorpay_order.token_package
+                    if not token_package:
+                        logger.error(f"No token package found for order {razorpay_order.id}")
+                        messages.error(request, 'Token package not found. Please contact support.')
+                        return redirect('/payments/tokens/')
+                    
+                    logger.info(f"Found token package: {token_package.name} with {token_package.total_tokens} tokens")
+                    
+                    # Store current token count for logging
+                    old_token_count = user.tokens
+                    
+                    # Add tokens to user account
+                    user.tokens += token_package.total_tokens
+                    user.save()
+                    
+                    logger.info(f"Token update successful for user {user.email}: {old_token_count} -> {user.tokens} (+{token_package.total_tokens})")
+                    
+                    # Update payment description
+                    payment.description = f"Token purchase: {token_package.name}"
+                    payment.tokens_purchased = token_package.total_tokens
+                    payment.save()
+                    
+                    success_message = f"{token_package.total_tokens} tokens added to your account successfully!"
+                    
+                except Exception as token_error:
+                    logger.error(f"Error processing token purchase: {str(token_error)}")
+                    messages.error(request, 'Failed to add tokens. Please contact support.')
+                    return redirect('/payments/tokens/')
+            else:
+                logger.warning(f"Unknown order type: {razorpay_order.order_type}")
+                messages.error(request, 'Unknown order type. Please contact support.')
+                return redirect('/wallet/')
             
-            return JsonResponse({
-                'success': True, 
-                'message': message,
-                'redirect_url': '/wallet/' if order.order_type == 'wallet_topup' else '/tokens/'
-            })
+            # Update Razorpay order status
+            razorpay_order.status = 'paid'
+            razorpay_order.razorpay_payment_id = razorpay_payment_id
+            razorpay_order.razorpay_signature = razorpay_signature
+            razorpay_order.paid_at = timezone.now()
+            razorpay_order.save()
             
-    except Exception as e:
-        logger.error(f"Payment success handling error: {str(e)}")
-        return JsonResponse({'success': False, 'message': 'Error processing payment'})
+            # Determine redirect URL based on order type
+            if razorpay_order.order_type == 'wallet_topup':
+                redirect_url = '/wallet/'
+            elif razorpay_order.order_type == 'token_purchase':
+                redirect_url = '/dashboard/'
+            else:
+                redirect_url = '/dashboard/'
+            
+            # Store success message in session for display
+            from django.contrib import messages
+            messages.success(request, success_message)
+            
+            # Return redirect instead of JSON for form submission
+            return redirect(redirect_url)
+            
+        except Exception as e:
+            logger.error(f"Payment success handling error: {str(e)}")
+            messages.error(request, 'Payment processing failed. Please contact support.')
+            return redirect('/wallet/')
+    
+    messages.error(request, 'Invalid request method')
+    return redirect('/wallet/')
 
 @csrf_exempt
 @require_http_methods(["POST"])

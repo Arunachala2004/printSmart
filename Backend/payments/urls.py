@@ -15,7 +15,7 @@ urlpatterns = [
     path('tokens/purchase/<uuid:package_id>/', views.purchase_tokens, name='purchase_tokens'),
     
     # Razorpay payment handling
-    path('payment-success/', views.payment_success, name='payment_success'),
+    path('payment-success/', views.payment_success_view, name='payment_success'),
     path('payment-failed/', views.payment_failed, name='payment_failed'),
     path('webhook/', views.razorpay_webhook, name='razorpay_webhook'),
     
