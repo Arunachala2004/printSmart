@@ -1,0 +1,7 @@
+[MESSAGES CONTROL]
+# Disable specific warnings
+disable=import-error,missing-module-docstring,missing-class-docstring,missing-function-docstring
+
+[TYPECHECK]
+# List of modules that can be imported but might not be available
+ignored-modules=razorpay

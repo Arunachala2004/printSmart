@@ -47,6 +47,55 @@ class TokenPackage(models.Model):
     def total_tokens(self):
         """Total tokens including bonus"""
         return self.token_count + self.bonus_tokens
+
+
+class RazorpayOrder(models.Model):
+    """Track Razorpay orders for payments"""
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    
+    # Razorpay order details
+    razorpay_order_id = models.CharField(max_length=100, unique=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, default='INR')
+    
+    # Order metadata
+    order_type = models.CharField(max_length=20, choices=[
+        ('wallet_topup', 'Wallet Top-up'),
+        ('token_purchase', 'Token Purchase'),
+        ('print_payment', 'Print Job Payment')
+    ])
+    
+    # Token package reference (if applicable)
+    token_package = models.ForeignKey(TokenPackage, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # Payment status
+    status = models.CharField(max_length=20, choices=[
+        ('created', 'Created'),
+        ('attempted', 'Payment Attempted'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled')
+    ], default='created')
+    
+    # Razorpay payment details (after payment)
+    razorpay_payment_id = models.CharField(max_length=100, blank=True, null=True)
+    razorpay_signature = models.CharField(max_length=255, blank=True, null=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'razorpay_orders'
+        verbose_name = 'Razorpay Order'
+        verbose_name_plural = 'Razorpay Orders'
+        ordering = ['-created_at']
+        
+    def __str__(self):
+        return f"Order {self.razorpay_order_id} - ₹{self.amount} ({self.status})"
         
     @property
     def price_per_token(self):

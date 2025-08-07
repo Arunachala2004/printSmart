@@ -275,6 +275,11 @@
                             <i class="fas fa-wallet me-1"></i>Wallet
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'payments:token_packages' %}">
+                            <i class="fas fa-coins me-1"></i>Tokens
+                        </a>
+                    </li>
                     {% if user.is_staff %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'web:admin_dashboard' %}">
@@ -297,6 +302,9 @@
                             </a></li>
                             <li><a class="dropdown-item" href="{% url 'web:wallet' %}">
                                 <i class="fas fa-wallet me-2"></i>Wallet (₹{{ user.wallet_balance|floatformat:2 }})
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'payments:token_packages' %}">
+                                <i class="fas fa-coins me-2"></i>Tokens ({{ user.tokens }})
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{% url 'web:logout' %}">

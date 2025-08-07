@@ -1,0 +1,87 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Purchase {{ package.name }} - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-shopping-cart"></i> Confirm Purchase
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="package-preview">
+                        <h5>{{ package.name }}</h5>
+                        <p class="text-muted">{{ package.description }}</p>
+                        
+                        <div class="package-details mb-4">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="text-center p-3 border rounded">
+                                        <div class="h3 text-primary">{{ package.token_count }}</div>
+                                        <small class="text-muted">Base Tokens</small>
+                                    </div>
+                                </div>
+                                {% if package.bonus_tokens > 0 %}
+                                <div class="col-6">
+                                    <div class="text-center p-3 border rounded bg-success text-white">
+                                        <div class="h3">+{{ package.bonus_tokens }}</div>
+                                        <small>Bonus Tokens</small>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if package.bonus_tokens > 0 %}
+                            <div class="text-center mt-3">
+                                <div class="h4 text-success">
+                                    Total: {{ package.total_tokens }} tokens
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="pricing mb-4">
+                            <div class="text-center">
+                                <div class="h2 text-primary">₹{{ package.price }}</div>
+                                <small class="text-muted">
+                                    ₹{{ package.per_token_price }} per token
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <form method="POST">
+                            {% csrf_token %}
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-credit-card"></i> Proceed to Payment
+                                </button>
+                                <a href="{% url 'payments:token_packages' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Back to Packages
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h6><i class="fas fa-info-circle"></i> Payment Information</h6>
+                        <ul class="mb-0 small">
+                            <li>Secure payment powered by Razorpay</li>
+                            <li>Tokens will be added instantly after payment</li>
+                            <li>All major payment methods accepted</li>
+                            <li>Tokens never expire</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

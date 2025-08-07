@@ -192,10 +192,6 @@ ALLOWED_FILE_TYPES = ['pdf', 'docx', 'jpg', 'jpeg', 'png']
 # Print Management Settings
 DEFAULT_PRINTER_NAME = 'Default Printer'
 
-# Razorpay Configuration
-RAZORPAY_KEY_ID = ''
-RAZORPAY_KEY_SECRET = ''
-
 # Celery Configuration
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
@@ -277,3 +273,14 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Razorpay Configuration
+RAZORPAY_KEY_ID = 'rzp_live_CsNfslQSxgiv3b'  # Replace with your actual test key
+RAZORPAY_KEY_SECRET = 'nEhirnpLChUcmlxLftCcIWvv'   # Replace with your actual secret key
+
+# For production, use environment variables:
+# RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')
+# RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
+
+# Razorpay webhook endpoint secret
+RAZORPAY_WEBHOOK_SECRET = 'your_webhook_secret'

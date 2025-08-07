@@ -39,29 +39,25 @@
                     <h6 class="card-title">
                         <i class="fas fa-plus-circle me-2"></i>Add Money
                     </h6>
-                    <form method="post" action="{% url 'web:add_money' %}">
+                    <form method="post" action="{% url 'payments:wallet_topup' %}">
                         {% csrf_token %}
                         <div class="mb-3">
                             <label for="amount" class="form-label">Amount (₹)</label>
                             <input type="number" class="form-control" id="amount" name="amount" 
-                                   min="10" max="10000" step="0.01" required 
+                                   min="10" max="50000" step="1" required 
                                    placeholder="Enter amount">
-                            <div class="form-text">Minimum: ₹10, Maximum: ₹10,000</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="payment_method" class="form-label">Payment Method</label>
-                            <select class="form-select" id="payment_method" name="payment_method" required>
-                                <option value="">Select payment method</option>
-                                <option value="razorpay">Razorpay</option>
-                                <option value="upi">UPI</option>
-                                <option value="card">Credit/Debit Card</option>
-                                <option value="netbanking">Net Banking</option>
-                            </select>
+                            <div class="form-text">Minimum: ₹10, Maximum: ₹50,000</div>
                         </div>
                         <button type="submit" class="btn btn-success w-100">
-                            <i class="fas fa-credit-card me-2"></i>Add Money
+                            <i class="fas fa-credit-card me-2"></i>Add Money with Razorpay
                         </button>
                     </form>
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'payments:token_packages' %}" class="btn btn-primary w-100">
+                            <i class="fas fa-coins me-2"></i>Purchase Token Packages
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

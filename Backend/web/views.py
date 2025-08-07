@@ -391,6 +391,20 @@ def printers_view(request):
 
 
 @login_required
+def select_printer(request, printer_id):
+    """Select a printer for printing"""
+    try:
+        printer = Printer.objects.get(id=printer_id, is_active=True)
+        # Store selected printer in session
+        request.session['selected_printer_id'] = str(printer.id)
+        messages.success(request, f'Printer "{printer.name}" selected successfully!')
+        return redirect('web:files')
+    except Printer.DoesNotExist:
+        messages.error(request, 'Printer not found or not available.')
+        return redirect('web:printers')
+
+
+@login_required
 def profile_view(request):
     """User profile view"""
     if request.method == 'POST':

@@ -1,0 +1,292 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Payment - PrintSmart{% endblock %}
+
+{% block extra_js %}
+<script>
+// Load Razorpay with fallback
+function loadRazorpay() {
+    return new Promise((resolve, reject) => {
+        // If already loaded
+        if (typeof Razorpay !== 'undefined') {
+            resolve();
+            return;
+        }
+        
+        // Try loading from primary CDN
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = function() {
+            console.log('Razorpay loaded successfully');
+            resolve();
+        };
+        script.onerror = function() {
+            console.warn('Primary CDN failed, trying alternative...');
+            // Remove failed script
+            document.head.removeChild(script);
+            
+            // Try alternative approach - load from different URL or show manual option
+            setTimeout(() => {
+                if (typeof Razorpay !== 'undefined') {
+                    resolve();
+                } else {
+                    reject(new Error('Failed to load Razorpay from CDN'));
+                }
+            }, 2000);
+        };
+        
+        document.head.appendChild(script);
+        
+        // Timeout after 10 seconds
+        setTimeout(() => {
+            if (typeof Razorpay === 'undefined') {
+                reject(new Error('Razorpay loading timeout'));
+            }
+        }, 10000);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const payBtn = document.getElementById('pay-btn');
+    const statusDiv = document.getElementById('razorpay-status');
+    
+    function showStatus(message, isError = false) {
+        statusDiv.innerHTML = `<small class="text-${isError ? 'danger' : 'muted'}">${message}</small>`;
+        statusDiv.style.display = 'block';
+    }
+    
+    function hideStatus() {
+        statusDiv.style.display = 'none';
+    }
+    
+    if (payBtn) {
+        // Pre-load Razorpay when page loads
+        showStatus('<i class="fas fa-spinner fa-spin"></i> Initializing payment gateway...');
+        loadRazorpay().then(() => {
+            hideStatus();
+        }).catch(error => {
+            console.error('Failed to preload Razorpay:', error);
+            showStatus('<i class="fas fa-exclamation-triangle"></i> Payment gateway not ready. Click Pay to retry.', true);
+        });
+        
+        payBtn.onclick = function(e) {
+            e.preventDefault();
+            
+            // Show loading
+            showStatus('<i class="fas fa-spinner fa-spin"></i> Preparing payment...');
+            payBtn.disabled = true;
+            
+            loadRazorpay().then(() => {
+                // Reset button and hide status
+                payBtn.disabled = false;
+                hideStatus();
+                
+                const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (!csrfElement) {
+                    showStatus('<i class="fas fa-exclamation-triangle"></i> Session expired. Please refresh the page.', true);
+                    return;
+                }
+                
+                const config = {
+                    key: payBtn.dataset.key,
+                    amount: parseInt(payBtn.dataset.amount),
+                    currency: payBtn.dataset.currency,
+                    name: "PrintSmart",
+                    description: payBtn.dataset.description,
+                    order_id: payBtn.dataset.orderId,
+                    handler: function (response) {
+                        showStatus('<i class="fas fa-check"></i> Payment successful! Redirecting...');
+                        
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = payBtn.dataset.successUrl;
+                        
+                        const csrf = document.createElement('input');
+                        csrf.type = 'hidden';
+                        csrf.name = 'csrfmiddlewaretoken';
+                        csrf.value = csrfElement.value;
+                        form.appendChild(csrf);
+                        
+                        ['razorpay_payment_id', 'razorpay_order_id', 'razorpay_signature'].forEach(function(field) {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = field;
+                            input.value = response[field];
+                            form.appendChild(input);
+                        });
+                        
+                        const orderInput = document.createElement('input');
+                        orderInput.type = 'hidden';
+                        orderInput.name = 'order_id';
+                        orderInput.value = payBtn.dataset.internalOrderId;
+                        form.appendChild(orderInput);
+                        
+                        document.body.appendChild(form);
+                        form.submit();
+                    },
+                    modal: {
+                        ondismiss: function() {
+                            hideStatus();
+                            window.location.href = payBtn.dataset.cancelUrl;
+                        }
+                    },
+                    prefill: {
+                        name: payBtn.dataset.userName,
+                        email: payBtn.dataset.userEmail,
+                        contact: payBtn.dataset.userPhone
+                    },
+                    theme: {
+                        color: "#007bff"
+                    }
+                };
+                
+                const rzp = new Razorpay(config);
+                
+                rzp.on('payment.failed', function (response) {
+                    showStatus('<i class="fas fa-times"></i> Payment failed. Redirecting...', true);
+                    
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = payBtn.dataset.failedUrl;
+                    
+                    const csrf = document.createElement('input');
+                    csrf.type = 'hidden';
+                    csrf.name = 'csrfmiddlewaretoken';
+                    csrf.value = csrfElement.value;
+                    form.appendChild(csrf);
+                    
+                    const orderInput = document.createElement('input');
+                    orderInput.type = 'hidden';
+                    orderInput.name = 'order_id';
+                    orderInput.value = payBtn.dataset.internalOrderId;
+                    form.appendChild(orderInput);
+                    
+                    const errorInput = document.createElement('input');
+                    errorInput.type = 'hidden';
+                    errorInput.name = 'error_description';
+                    errorInput.value = response.error.description || 'Payment failed';
+                    form.appendChild(errorInput);
+                    
+                    document.body.appendChild(form);
+                    form.submit();
+                });
+                
+                try {
+                    rzp.open();
+                } catch (error) {
+                    console.error('Error opening Razorpay:', error);
+                    showStatus('<i class="fas fa-exclamation-triangle"></i> Error opening payment gateway: ' + error.message, true);
+                    payBtn.disabled = false;
+                }
+                
+            }).catch((error) => {
+                // Reset button
+                payBtn.disabled = false;
+                
+                console.error('Razorpay loading error:', error);
+                
+                // Show user-friendly error with options
+                showStatus(`
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    Payment gateway temporarily unavailable. 
+                    <a href="#" onclick="window.location.reload()" class="text-danger">
+                        <u>Refresh page</u>
+                    </a> 
+                    or check your internet connection.
+                    <br><small>If problem persists, try disabling ad blockers or using a different browser.</small>
+                `, true);
+            });
+        };
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-credit-card"></i> 
+                        {% if package %}
+                            Purchase Tokens
+                        {% else %}
+                            Wallet Top-up
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if package %}
+                        <div class="mb-3">
+                            <h5>{{ package.name }}</h5>
+                            <p class="text-muted">{{ package.description }}</p>
+                            <div class="d-flex justify-content-between">
+                                <span>Tokens:</span>
+                                <span class="fw-bold">{{ package.token_count }}</span>
+                            </div>
+                            {% if package.bonus_tokens > 0 %}
+                            <div class="d-flex justify-content-between">
+                                <span>Bonus Tokens:</span>
+                                <span class="fw-bold text-success">+{{ package.bonus_tokens }}</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <span>Total Tokens:</span>
+                                <span class="fw-bold">{{ package.total_tokens }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="payment-details">
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Amount:</span>
+                            <span class="h5 text-primary">₹{{ amount_display|floatformat:0 }}</span>
+                        </div>
+                        
+                        <button id="pay-btn" class="btn btn-primary btn-lg w-100" 
+                                data-key="{{ razorpay_key }}"
+                                data-amount="{{ amount }}"
+                                data-currency="{{ currency }}"
+                                data-order-id="{{ razorpay_order_id }}"
+                                data-internal-order-id="{{ order_id }}"
+                                data-user-name="{{ user_name }}"
+                                data-user-email="{{ user_email }}"
+                                data-user-phone="{{ user_phone }}"
+                                data-description="{% if package %}Token Purchase - {{ package.name }}{% else %}Wallet Top-up{% endif %}"
+                                data-success-url="{% url 'payments:payment_success' %}"
+                                data-failed-url="{% url 'payments:payment_failed' %}"
+                                data-cancel-url="{% if package %}{% url 'payments:token_packages' %}{% else %}{% url 'web:wallet' %}{% endif %}">
+                            <i class="fas fa-lock"></i> Pay Securely with Razorpay
+                        </button>
+                        
+                        <div id="razorpay-status" class="text-center mt-2" style="display: none;">
+                            <small class="text-muted">
+                                <i class="fas fa-spinner fa-spin"></i> Initializing secure payment gateway...
+                            </small>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-shield-alt"></i> 
+                                Secured by Razorpay | 256-bit SSL Encryption
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-3 text-center">
+                <a href="{% if package %}{% url 'payments:token_packages' %}{% else %}{% url 'web:wallet' %}{% endif %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

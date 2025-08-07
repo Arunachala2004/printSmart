@@ -29,6 +29,7 @@ urlpatterns = [
     
     # Printers
     path('printers/', views.printers_view, name='printers'),
+    path('printers/<uuid:printer_id>/select/', views.select_printer, name='select_printer'),
     
     # Wallet and Payments
     path('wallet/', views.wallet_view, name='wallet'),

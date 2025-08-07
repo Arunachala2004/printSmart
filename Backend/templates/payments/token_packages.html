@@ -1,0 +1,112 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Token Packages - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-coins"></i> Token Packages</h2>
+                    <p class="text-muted mb-0">Purchase tokens to pay for print jobs</p>
+                </div>
+                <div class="user-stats">
+                    <div class="badge bg-primary fs-6 me-2">
+                        <i class="fas fa-coins"></i> Tokens: {{ user_tokens }}
+                    </div>
+                    <div class="badge bg-success fs-6">
+                        <i class="fas fa-wallet"></i> Wallet: ₹{{ wallet_balance|floatformat:2 }}
+                    </div>
+                </div>
+            </div>
+
+            {% if packages %}
+                <div class="row">
+                    {% for package in packages %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 {% if package.is_featured %}border-primary{% endif %}">
+                            {% if package.is_featured %}
+                                <div class="card-header bg-primary text-white text-center">
+                                    <i class="fas fa-star"></i> Most Popular
+                                </div>
+                            {% endif %}
+                            
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">{{ package.name }}</h5>
+                                <p class="card-text text-muted">{{ package.description }}</p>
+                                
+                                <div class="package-details mb-3">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Base Tokens:</span>
+                                        <span class="fw-bold">{{ package.token_count }}</span>
+                                    </div>
+                                    
+                                    {% if package.bonus_tokens > 0 %}
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Bonus Tokens:</span>
+                                        <span class="fw-bold text-success">+{{ package.bonus_tokens }}</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Total Tokens:</span>
+                                        <span class="fw-bold text-primary">{{ package.total_tokens }}</span>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="text-center mt-3">
+                                        <div class="h4 text-success">₹{{ package.price }}</div>
+                                        <small class="text-muted">
+                                            ₹{{ package.per_token_price }} per token
+                                        </small>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-auto">
+                                    <form method="POST" action="{% url 'payments:purchase_tokens' package.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn {% if package.is_featured %}btn-primary{% else %}btn-outline-primary{% endif %} w-100">
+                                            <i class="fas fa-shopping-cart"></i> Purchase Tokens
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mt-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5><i class="fas fa-info-circle"></i> How Tokens Work</h5>
+                            <ul class="mb-0">
+                                <li>Tokens are used to pay for print jobs</li>
+                                <li>1 token = ₹1 print credit</li>
+                                <li>Tokens never expire</li>
+                                <li>Unused tokens remain in your account</li>
+                                <li>Bulk packages offer bonus tokens for better value</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-coins fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No Token Packages Available</h4>
+                    <p class="text-muted">Token packages will be available soon.</p>
+                </div>
+            {% endif %}
+
+            <div class="mt-4">
+                <a href="{% url 'web:dashboard' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+                <a href="{% url 'web:wallet' %}" class="btn btn-primary">
+                    <i class="fas fa-wallet"></i> Manage Wallet
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
