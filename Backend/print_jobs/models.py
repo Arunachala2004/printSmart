@@ -73,6 +73,58 @@ class Printer(models.Model):
         """Add to total pages printed"""
         self.total_pages_printed += pages
         self.save()
+    
+    def test_connection(self):
+        """Test printer connectivity"""
+        import socket
+        import subprocess
+        
+        if not self.ip_address:
+            return False, "No IP address configured"
+        
+        try:
+            # Test ping first
+            result = subprocess.run(
+                ['ping', '-n', '1', '-w', '3000', self.ip_address],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            if result.returncode != 0:
+                return False, f"Ping to {self.ip_address} failed"
+            
+            # Test port if specified
+            if self.port:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(5)
+                result = sock.connect_ex((self.ip_address, self.port))
+                sock.close()
+                
+                if result != 0:
+                    return False, f"Port {self.port} is not accessible"
+            
+            return True, "Connection successful"
+            
+        except subprocess.TimeoutExpired:
+            return False, "Connection timeout"
+        except Exception as e:
+            return False, f"Connection error: {str(e)}"
+    
+    def check_and_update_status(self):
+        """Check connection and update status automatically"""
+        is_connected, message = self.test_connection()
+        
+        if is_connected:
+            if self.status in ['offline', 'error']:
+                self.update_status('online')
+                return True, "Printer is back online"
+        else:
+            if self.status == 'online':
+                self.update_status('offline')
+                return False, f"Printer went offline: {message}"
+        
+        return is_connected, message
 
 
 class PrintJob(models.Model):
@@ -218,6 +270,96 @@ class PrintJob(models.Model):
             self.progress_percentage = percentage
             
         self.save()
+    
+    def mark_failed(self, error_message, should_retry=True):
+        """Mark job as failed and handle retry logic"""
+        from django.utils import timezone
+        
+        self.error_message = error_message
+        self.status = 'failed'
+        
+        if should_retry and self.retry_count < self.max_retries:
+            self.retry_count += 1
+            self.status = 'pending'  # Queue for retry
+            self.save()
+            
+            # Create notification for retry
+            try:
+                from core.models import Notification
+                Notification.objects.create(
+                    user=self.user,
+                    title="Print Job Retry",
+                    message=f"Print job for {self.file.original_filename} failed but will be retried (attempt {self.retry_count}/{self.max_retries})",
+                    notification_type='print_job'
+                )
+            except ImportError:
+                pass  # Notification system not available
+            
+            return True  # Will retry
+        else:
+            # Max retries exceeded or retry disabled
+            self.save()
+            
+            # Refund user if payment was deducted
+            if hasattr(self, 'total_cost') and self.total_cost:
+                self.user.wallet_balance += self.total_cost
+                self.user.save()
+                
+                # Create refund payment record
+                try:
+                    from payments.models import Payment
+                    import time
+                    reference_number = f"REFUND_{int(time.time())}_{self.user.id}"
+                    Payment.objects.create(
+                        user=self.user,
+                        amount=self.total_cost,
+                        payment_method='refund',
+                        description=f'Refund for failed print job: {self.file.original_filename}',
+                        status='completed',
+                        reference_number=reference_number
+                    )
+                except ImportError:
+                    pass
+            
+            # Create failure notification
+            try:
+                from core.models import Notification
+                Notification.objects.create(
+                    user=self.user,
+                    title="Print Job Failed",
+                    message=f"Print job for {self.file.original_filename} has permanently failed. You have been refunded.",
+                    notification_type='print_job'
+                )
+            except ImportError:
+                pass
+            
+            return False  # No more retries
+    
+    def can_retry(self):
+        """Check if job can be retried"""
+        return (self.status == 'failed' and 
+                self.retry_count < self.max_retries and 
+                self.printer and 
+                self.printer.status == 'online')
+    
+    def retry_job(self):
+        """Retry a failed job"""
+        if not self.can_retry():
+            return False, "Job cannot be retried"
+        
+        # Check printer connection before retry
+        if hasattr(self.printer, 'test_connection'):
+            is_connected, message = self.printer.test_connection()
+            if not is_connected:
+                return False, f"Printer still offline: {message}"
+        
+        # Reset job status for retry
+        self.status = 'pending'
+        self.error_message = ''
+        self.retry_count += 1
+        self.save()
+        
+        return True, f"Job queued for retry (attempt {self.retry_count})"
 
 
 class PrintJobStatusHistory(models.Model):

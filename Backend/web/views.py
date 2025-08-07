@@ -4,14 +4,68 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db.models import Sum, Count
+from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from decimal import Decimal
 import json
 
 from users.models import User
+
+
+def calculate_pages_to_print(pages_string, total_pages):
+    """Calculate total pages to print from page specification"""
+    if not pages_string or pages_string.strip() == '' or pages_string == 'all':
+        return total_pages
+    
+    try:
+        total_pages_to_print = 0
+        parts = pages_string.split(',')
+        
+        for part in parts:
+            part = part.strip()
+            if '-' in part:
+                # Range like "1-5"
+                start, end = part.split('-', 1)
+                start = int(start.strip())
+                end = int(end.strip())
+                if start <= end <= total_pages:
+                    total_pages_to_print += (end - start + 1)
+            else:
+                # Single page like "3"
+                page = int(part.strip())
+                if 1 <= page <= total_pages:
+                    total_pages_to_print += 1
+        
+        return max(1, total_pages_to_print)
+    except (ValueError, AttributeError):
+        return total_pages  # Default to all pages if parsing fails
+
+
+def calculate_enhanced_cost(pages_count, copies, color_mode, print_quality):
+    """Calculate enhanced cost with all options"""
+    # Base cost per page
+    base_cost = Decimal('1.0')  # B&W
+    if color_mode == 'grayscale':
+        base_cost = Decimal('1.5')
+    elif color_mode == 'color':
+        base_cost = Decimal('2.0')
+    
+    # Quality multiplier
+    quality_multipliers = {
+        'draft': Decimal('0.8'),
+        'normal': Decimal('1.0'),
+        'high': Decimal('1.5'),
+        'best': Decimal('2.0')
+    }
+    quality_multiplier = quality_multipliers.get(print_quality, Decimal('1.0'))
+    
+    # Calculate total cost
+    total_cost = base_cost * pages_count * copies * quality_multiplier
+    return total_cost.quantize(Decimal('0.01'))  # Round to 2 decimal places
 from files.models import File
 from print_jobs.models import PrintJob, Printer
 from payments.models import Payment
@@ -215,11 +269,31 @@ def print_file_view(request, file_id):
     file_obj = get_object_or_404(File, id=file_id, user=request.user)
     printers = Printer.objects.filter(is_active=True, status='online')
     
+    # Check if any printers are available
+    if not printers.exists():
+        messages.error(request, 'No printers are currently online. Please try again later or contact support.')
+        return redirect('web:files')
+    
     if request.method == 'POST':
         printer_id = request.POST.get('printer')
         copies = int(request.POST.get('copies', 1))
         color_mode = request.POST.get('color_mode', 'bw')
         duplex = request.POST.get('duplex') == 'on'
+        
+        # Enhanced printing options
+        pages = request.POST.get('pages', 'all')
+        page_selection = request.POST.get('page_selection', 'all')
+        paper_size = request.POST.get('paper_size', 'A4')
+        print_quality = request.POST.get('print_quality', 'normal')
+        orientation = request.POST.get('orientation', 'portrait')
+        collate = request.POST.get('collate') == 'on'
+        fit_to_page = request.POST.get('fit_to_page') == 'on'
+        
+        # Process page selection
+        if page_selection == 'all':
+            pages = 'all'
+        elif not pages or pages.strip() == '':
+            pages = 'all'
         
         if not printer_id:
             messages.error(request, 'Please select a printer.')
@@ -227,9 +301,30 @@ def print_file_view(request, file_id):
         
         printer = get_object_or_404(Printer, id=printer_id)
         
-        # Calculate cost (simplified)
-        base_cost = 2.0 if color_mode == 'color' else 1.0
-        total_cost = base_cost * copies
+        # Critical: Re-check printer status before job submission
+        if printer.status != 'online' or not printer.is_active:
+            messages.error(request, f'Selected printer "{printer.name}" is currently {printer.status}. Please select a different printer.')
+            return redirect('web:print_file', file_id=file_id)
+        
+        # Validate printer capabilities
+        if color_mode in ['color', 'grayscale'] and not printer.supports_color:
+            messages.error(request, f'Selected printer "{printer.name}" does not support color printing. Please select Black & White.')
+            return redirect('web:print_file', file_id=file_id)
+        
+        if duplex and not printer.supports_duplex:
+            messages.error(request, f'Selected printer "{printer.name}" does not support duplex printing.')
+            return redirect('web:print_file', file_id=file_id)
+        
+        # Calculate total pages to print
+        total_pages_to_print = calculate_pages_to_print(pages, file_obj.page_count or 1)
+        
+        # Enhanced cost calculation
+        total_cost = calculate_enhanced_cost(
+            pages_count=total_pages_to_print,
+            copies=copies,
+            color_mode=color_mode,
+            print_quality=print_quality
+        )
         
         # Check wallet balance
         if request.user.wallet_balance < total_cost:
@@ -237,32 +332,68 @@ def print_file_view(request, file_id):
             return redirect('web:wallet')
         
         try:
-            # Create print job
-            print_job = PrintJob.objects.create(
-                user=request.user,
-                file=file_obj,
-                printer=printer,
-                copies=copies,
-                color_mode=color_mode,
-                duplex=duplex,
-                total_cost=total_cost,
-                status='pending'
+            with transaction.atomic():
+                # Create enhanced print job
+                print_job = PrintJob.objects.create(
+                    user=request.user,
+                    file=file_obj,
+                    printer=printer,
+                    copies=copies,
+                    pages=pages,
+                    color_mode=color_mode,
+                    paper_size=paper_size,
+                    print_quality=print_quality,
+                    duplex=duplex,
+                    collate=collate,
+                    orientation=orientation,
+                    total_pages=total_pages_to_print,
+                    total_cost=total_cost,
+                    status='pending',
+                    # Store additional settings in job_settings JSON field
+                    job_settings={
+                        'fit_to_page': fit_to_page,
+                        'page_selection_type': page_selection,
+                        'original_page_count': file_obj.page_count or 1
+                    }
+                )
+                
+                # Deduct from wallet
+                request.user.wallet_balance -= total_cost
+                request.user.save()
+                
+                # Create payment record
+                import time
+                reference_number = f"PRINT_{int(time.time())}_{request.user.id}"
+                Payment.objects.create(
+                    user=request.user,
+                    amount=total_cost,
+                    payment_method='wallet',
+                    description=f'Print job for {file_obj.original_filename}',
+                    status='completed',
+                    reference_number=reference_number
+                )
+            
+            # Create detailed success message
+            settings_summary = []
+            if pages != 'all':
+                settings_summary.append(f"Pages: {pages}")
+            if copies > 1:
+                settings_summary.append(f"{copies} copies")
+            if color_mode != 'bw':
+                settings_summary.append(f"{color_mode.replace('_', ' ').title()}")
+            if print_quality != 'normal':
+                settings_summary.append(f"{print_quality.title()} quality")
+            if duplex:
+                settings_summary.append("Double-sided")
+            if orientation != 'portrait':
+                settings_summary.append("Landscape")
+            
+            settings_text = f" ({', '.join(settings_summary)})" if settings_summary else ""
+            
+            messages.success(request, 
+                f'Print job submitted successfully! Job ID: {print_job.id}'
+                f'{settings_text}. Total cost: ${total_cost}'
             )
-            
-            # Deduct from wallet
-            request.user.wallet_balance -= total_cost
-            request.user.save()
-            
-            # Create payment record
-            Payment.objects.create(
-                user=request.user,
-                amount=total_cost,
-                payment_method='wallet',
-                description=f'Print job for {file_obj.original_filename}',
-                status='completed'
-            )
-            
-            messages.success(request, f'Print job submitted successfully! Job ID: {print_job.id}')
             return redirect('web:print_jobs')
             
         except Exception as e:

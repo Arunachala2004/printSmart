@@ -1,0 +1,443 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Print File - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-print me-2"></i>Print Options
+                    </h5>
+                    <small class="text-muted">Configure your print settings for: {{ file.original_filename }}</small>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="printForm">
+                        {% csrf_token %}
+                        
+                        <!-- Printer Selection -->
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <label for="printer" class="form-label">
+                                    <i class="fas fa-printer me-1"></i>Select Printer *
+                                </label>
+                                <select class="form-select" id="printer" name="printer" required>
+                                    <option value="">Choose a printer...</option>
+                                    {% for printer in printers %}
+                                        <option value="{{ printer.id }}" 
+                                                data-supports-color="{{ printer.supports_color|yesno:'true,false' }}"
+                                                data-supports-duplex="{{ printer.supports_duplex|yesno:'true,false' }}"
+                                                data-max-paper-size="{{ printer.max_paper_size }}">
+                                            {{ printer.name }} 
+                                            ({{ printer.printer_type|title }} - 
+                                            {% if printer.supports_color %}Color{% else %}B&W Only{% endif %})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <span class="text-success">● {{ printers|length }} printer{{ printers|length|pluralize }} online</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Basic Settings Row -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label for="copies" class="form-label">
+                                    <i class="fas fa-copy me-1"></i>Number of Copies
+                                </label>
+                                <input type="number" class="form-control" id="copies" name="copies" 
+                                       value="1" min="1" max="100" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="color_mode" class="form-label">
+                                    <i class="fas fa-palette me-1"></i>Color Mode
+                                </label>
+                                <select class="form-select" id="color_mode" name="color_mode">
+                                    <option value="bw">Black & White ($1.00/page)</option>
+                                    <option value="grayscale">Grayscale ($1.50/page)</option>
+                                    <option value="color">Full Color ($2.00/page)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="print_quality" class="form-label">
+                                    <i class="fas fa-star me-1"></i>Print Quality
+                                </label>
+                                <select class="form-select" id="print_quality" name="print_quality">
+                                    <option value="draft">Draft (Fast, -20%)</option>
+                                    <option value="normal" selected>Normal</option>
+                                    <option value="high">High Quality (+50%)</option>
+                                    <option value="best">Best Quality (+100%)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Page Settings Row -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="pages" class="form-label">
+                                    <i class="fas fa-file-alt me-1"></i>Pages to Print
+                                </label>
+                                <div class="input-group">
+                                    <select class="form-select" id="page_selection" name="page_selection" style="max-width: 120px;">
+                                        <option value="all">All Pages</option>
+                                        <option value="range">Page Range</option>
+                                        <option value="specific">Specific Pages</option>
+                                    </select>
+                                    <input type="text" class="form-control" id="pages" name="pages" 
+                                           placeholder="e.g., 1-5,8,10-12" disabled>
+                                </div>
+                                <div class="form-text">
+                                    Examples: "1-5" (pages 1 to 5), "1,3,5" (specific pages), "1-3,7-9" (ranges)
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="paper_size" class="form-label">
+                                    <i class="fas fa-expand me-1"></i>Paper Size
+                                </label>
+                                <select class="form-select" id="paper_size" name="paper_size">
+                                    <option value="A4" selected>A4 (210×297mm)</option>
+                                    <option value="A3">A3 (297×420mm)</option>
+                                    <option value="Letter">Letter (8.5×11")</option>
+                                    <option value="Legal">Legal (8.5×14")</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="orientation" class="form-label">
+                                    <i class="fas fa-mobile-alt me-1"></i>Orientation
+                                </label>
+                                <select class="form-select" id="orientation" name="orientation">
+                                    <option value="portrait" selected>Portrait</option>
+                                    <option value="landscape">Landscape</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Settings -->
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <label class="form-label">
+                                    <i class="fas fa-cogs me-1"></i>Advanced Options
+                                </label>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="duplex" name="duplex">
+                                            <label class="form-check-label" for="duplex">
+                                                <strong>Double-sided printing</strong>
+                                                <br><small class="text-muted">Print on both sides of paper</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="collate" name="collate" checked>
+                                            <label class="form-check-label" for="collate">
+                                                <strong>Collate copies</strong>
+                                                <br><small class="text-muted">Sort pages for multiple copies</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="fit_to_page" name="fit_to_page">
+                                            <label class="form-check-label" for="fit_to_page">
+                                                <strong>Fit to page</strong>
+                                                <br><small class="text-muted">Scale content to fit paper</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cost Calculator -->
+                        <div class="alert alert-info">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h6 class="mb-1">
+                                        <i class="fas fa-calculator me-1"></i>Cost Calculation
+                                    </h6>
+                                    <div id="cost-breakdown">
+                                        <span id="pages-count">1 page</span> × 
+                                        <span id="copies-count">1 copy</span> × 
+                                        <span id="base-cost">$1.00</span>
+                                        <span id="quality-multiplier"></span> = 
+                                        <strong id="total-cost">$1.00</strong>
+                                    </div>
+                                    <small class="text-muted">Your wallet balance: ${{ request.user.wallet_balance }}</small>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'web:file_detail' file.id %}" class="btn btn-outline-secondary">
+                                            <i class="fas fa-arrow-left me-1"></i>Back
+                                        </a>
+                                        <button type="submit" class="btn btn-success" id="printButton">
+                                            <i class="fas fa-print me-1"></i>Print Now
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Preview Sidebar -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-eye me-2"></i>File Preview
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        {% if file.file_type == 'pdf' %}
+                            <i class="fas fa-file-pdf fa-4x text-danger"></i>
+                        {% elif file.file_type in 'jpg,jpeg,png' %}
+                            <i class="fas fa-file-image fa-4x text-info"></i>
+                        {% elif file.file_type == 'docx' %}
+                            <i class="fas fa-file-word fa-4x text-primary"></i>
+                        {% else %}
+                            <i class="fas fa-file fa-4x text-secondary"></i>
+                        {% endif %}
+                    </div>
+                    
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Filename:</strong></td>
+                            <td>{{ file.original_filename }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Size:</strong></td>
+                            <td>{{ file.file_size|filesizeformat }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Type:</strong></td>
+                            <td>{{ file.file_type|upper }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pages:</strong></td>
+                            <td id="file-pages">{{ file.page_count|default:"1" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Uploaded:</strong></td>
+                            <td>{{ file.created_at|date:"M d, H:i" }}</td>
+                        </tr>
+                    </table>
+
+                    <!-- Print Preview Notice -->
+                    <div class="alert alert-light">
+                        <small>
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>Note:</strong> Full preview will be available after print job submission.
+                            Your print settings will be applied automatically.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elements
+    const printerSelect = document.getElementById('printer');
+    const colorModeSelect = document.getElementById('color_mode');
+    const qualitySelect = document.getElementById('print_quality');
+    const copiesInput = document.getElementById('copies');
+    const pageSelection = document.getElementById('page_selection');
+    const pagesInput = document.getElementById('pages');
+    const duplexCheck = document.getElementById('duplex');
+    const filePagesElement = document.getElementById('file-pages');
+    
+    // Cost elements
+    const pagesCountElement = document.getElementById('pages-count');
+    const copiesCountElement = document.getElementById('copies-count');
+    const baseCostElement = document.getElementById('base-cost');
+    const qualityMultiplierElement = document.getElementById('quality-multiplier');
+    const totalCostElement = document.getElementById('total-cost');
+    
+    const totalPages = parseInt(filePagesElement.textContent) || 1;
+    
+    // Page selection logic
+    if (pageSelection && pagesInput) {
+        pageSelection.addEventListener('change', function() {
+            if (this.value === 'all') {
+                pagesInput.disabled = true;
+                pagesInput.value = '';
+                pagesInput.placeholder = 'All pages will be printed';
+            } else {
+                pagesInput.disabled = false;
+                if (this.value === 'range') {
+                    pagesInput.placeholder = 'e.g., 1-5, 7-10';
+                } else {
+                    pagesInput.placeholder = 'e.g., 1,3,5,8';
+                }
+            }
+            calculateCost();
+        });
+    }
+    
+    // Printer selection logic
+    if (printerSelect) {
+        printerSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (!selectedOption) return;
+            
+            const supportsColor = selectedOption.dataset.supportsColor === 'true';
+            const supportsDuplex = selectedOption.dataset.supportsDuplex === 'true';
+            
+            // Update color mode options
+            if (colorModeSelect) {
+                const colorOptions = colorModeSelect.options;
+                for (let option of colorOptions) {
+                    if (option.value === 'color' || option.value === 'grayscale') {
+                        option.disabled = !supportsColor;
+                    }
+                }
+            }
+            
+            // Update duplex option
+            if (duplexCheck) {
+                duplexCheck.disabled = !supportsDuplex;
+                if (!supportsDuplex) {
+                    duplexCheck.checked = false;
+                }
+            }
+            
+            // Reset to B&W if color not supported
+            if (colorModeSelect && !supportsColor && (colorModeSelect.value === 'color' || colorModeSelect.value === 'grayscale')) {
+                colorModeSelect.value = 'bw';
+            }
+            
+            calculateCost();
+        });
+    }
+    
+    // Cost calculation
+    function calculateCost() {
+        const copies = parseInt(copiesInput.value) || 1;
+        const colorMode = colorModeSelect.value;
+        const quality = qualitySelect.value;
+        
+        // Calculate pages to print
+        let pagesToPrint = totalPages;
+        if (pageSelection.value !== 'all' && pagesInput.value.trim()) {
+            pagesToPrint = calculatePagesFromInput(pagesInput.value.trim());
+        }
+        
+        // Base cost per page
+        let baseCost = 1.00; // B&W
+        if (colorMode === 'grayscale') baseCost = 1.50;
+        if (colorMode === 'color') baseCost = 2.00;
+        
+        // Quality multiplier
+        let qualityMultiplier = 1.0;
+        let qualityText = '';
+        switch (quality) {
+            case 'draft':
+                qualityMultiplier = 0.8;
+                qualityText = ' × 0.8 (Draft)';
+                break;
+            case 'high':
+                qualityMultiplier = 1.5;
+                qualityText = ' × 1.5 (High)';
+                break;
+            case 'best':
+                qualityMultiplier = 2.0;
+                qualityText = ' × 2.0 (Best)';
+                break;
+            default:
+                qualityText = '';
+        }
+        
+        const totalCost = pagesToPrint * copies * baseCost * qualityMultiplier;
+        
+        // Update display
+        if (pagesCountElement) pagesCountElement.textContent = `${pagesToPrint} page${pagesToPrint !== 1 ? 's' : ''}`;
+        if (copiesCountElement) copiesCountElement.textContent = `${copies} cop${copies !== 1 ? 'ies' : 'y'}`;
+        if (baseCostElement) baseCostElement.textContent = `$${baseCost.toFixed(2)}`;
+        if (qualityMultiplierElement) qualityMultiplierElement.textContent = qualityText;
+        if (totalCostElement) totalCostElement.textContent = `$${totalCost.toFixed(2)}`;
+        
+        // Check wallet balance
+        const walletBalance = parseFloat('{{ request.user.wallet_balance|default:"0" }}') || 0;
+        const printButton = document.getElementById('printButton');
+        
+        if (printButton && totalCost > walletBalance) {
+            printButton.disabled = true;
+            printButton.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Insufficient Balance';
+            printButton.classList.remove('btn-success');
+            printButton.classList.add('btn-warning');
+        } else if (printButton) {
+            printButton.disabled = false;
+            printButton.innerHTML = '<i class="fas fa-print me-1"></i>Print Now';
+            printButton.classList.remove('btn-warning');
+            printButton.classList.add('btn-success');
+        }
+    }
+    
+    function calculatePagesFromInput(input) {
+        let totalPages = 0;
+        const parts = input.split(',');
+        
+        for (let part of parts) {
+            part = part.trim();
+            if (part.includes('-')) {
+                // Range like "1-5"
+                const [start, end] = part.split('-').map(n => parseInt(n.trim()));
+                if (!isNaN(start) && !isNaN(end) && start <= end) {
+                    totalPages += (end - start + 1);
+                }
+            } else {
+                // Single page like "3"
+                const page = parseInt(part);
+                if (!isNaN(page)) {
+                    totalPages += 1;
+                }
+            }
+        }
+        
+        return Math.max(1, totalPages);
+    }
+    
+    // Add event listeners for cost calculation
+    if (copiesInput) copiesInput.addEventListener('input', calculateCost);
+    if (colorModeSelect) colorModeSelect.addEventListener('change', calculateCost);
+    if (qualitySelect) qualitySelect.addEventListener('change', calculateCost);
+    if (pagesInput) pagesInput.addEventListener('input', calculateCost);
+    
+    // Initial calculation
+    calculateCost();
+    
+    // Form validation
+    const printForm = document.getElementById('printForm');
+    if (printForm) {
+        printForm.addEventListener('submit', function(e) {
+            if (printerSelect && !printerSelect.value) {
+                e.preventDefault();
+                alert('Please select a printer.');
+                return;
+            }
+            
+            if (pageSelection && pagesInput && pageSelection.value !== 'all' && pagesInput.value.trim()) {
+                // Validate page input
+                const pageInput = pagesInput.value.trim();
+                const validPattern = /^[\d\s,-]+$/;
+                if (!validPattern.test(pageInput)) {
+                    e.preventDefault();
+                    alert('Please enter valid page numbers (e.g., 1-5,8,10-12).');
+                    return;
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
