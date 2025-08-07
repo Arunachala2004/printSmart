@@ -1,0 +1,285 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Dashboard - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h2 class="mb-1">Welcome back, {{ user.first_name|default:user.username }}!</h2>
+                            <p class="mb-0 opacity-75">Manage your printing needs from your dashboard</p>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-tachometer-alt fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-primary mb-3">
+                        <i class="fas fa-wallet fa-2x"></i>
+                    </div>
+                    <h4 class="text-primary mb-1">₹{{ wallet_balance|default:"0.00" }}</h4>
+                    <p class="text-muted mb-0">Wallet Balance</p>
+                    <a href="{% url 'web:wallet' %}" class="btn btn-sm btn-outline-primary mt-2">Add Money</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-success mb-3">
+                        <i class="fas fa-print fa-2x"></i>
+                    </div>
+                    <h4 class="text-success mb-1">{{ total_print_jobs|default:"0" }}</h4>
+                    <p class="text-muted mb-0">Total Print Jobs</p>
+                    <a href="{% url 'web:print_jobs' %}" class="btn btn-sm btn-outline-success mt-2">View All</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-info mb-3">
+                        <i class="fas fa-file-alt fa-2x"></i>
+                    </div>
+                    <h4 class="text-info mb-1">{{ total_files|default:"0" }}</h4>
+                    <p class="text-muted mb-0">Uploaded Files</p>
+                    <a href="{% url 'web:files' %}" class="btn btn-sm btn-outline-info mt-2">Manage Files</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-warning mb-3">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                    <h4 class="text-warning mb-1">{{ pending_jobs|default:"0" }}</h4>
+                    <p class="text-muted mb-0">Pending Jobs</p>
+                    <a href="{% url 'web:print_jobs' %}" class="btn btn-sm btn-outline-warning mt-2">Check Status</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{% url 'web:upload_file' %}" class="btn btn-outline-primary w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="fas fa-cloud-upload-alt fa-2x mb-2"></i>
+                                <span>Upload & Print</span>
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{% url 'web:printers' %}" class="btn btn-outline-success w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="fas fa-search fa-2x mb-2"></i>
+                                <span>Find Printers</span>
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{% url 'web:wallet' %}" class="btn btn-outline-info w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="fas fa-credit-card fa-2x mb-2"></i>
+                                <span>Add Money</span>
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{% url 'web:profile' %}" class="btn btn-outline-warning w-100 h-100 d-flex flex-column justify-content-center">
+                                <i class="fas fa-user-cog fa-2x mb-2"></i>
+                                <span>Settings</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Print Jobs
+                    </h5>
+                    <a href="{% url 'web:print_jobs' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_print_jobs %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>File</th>
+                                        <th>Printer</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for job in recent_print_jobs %}
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-file-pdf text-danger me-2"></i>
+                                            {{ job.file.name|truncatechars:30 }}
+                                        </td>
+                                        <td>{{ job.printer.name }}</td>
+                                        <td>
+                                            {% if job.status == 'completed' %}
+                                                <span class="badge bg-success">{{ job.status|title }}</span>
+                                            {% elif job.status == 'pending' %}
+                                                <span class="badge bg-warning">{{ job.status|title }}</span>
+                                            {% elif job.status == 'processing' %}
+                                                <span class="badge bg-info">{{ job.status|title }}</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{{ job.status|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ job.created_at|date:"M d, Y" }}</td>
+                                        <td>₹{{ job.total_cost }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-print fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No print jobs yet</h6>
+                            <p class="text-muted">Upload a file to get started!</p>
+                            <a href="{% url 'web:upload_file' %}" class="btn btn-primary">
+                                <i class="fas fa-cloud-upload-alt me-2"></i>Upload File
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bell me-2"></i>Notifications
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-gift text-success"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">Welcome Bonus!</h6>
+                                    <p class="mb-1 small">You received ₹100 welcome credit.</p>
+                                    <small class="text-muted">2 hours ago</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-info-circle text-info"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">Tip: Save on bulk printing</h6>
+                                    <p class="mb-1 small">Print multiple pages at once for better rates.</p>
+                                    <small class="text-muted">1 day ago</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-star text-warning"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">Rate your experience</h6>
+                                    <p class="mb-1 small">Help us improve by rating your last print job.</p>
+                                    <small class="text-muted">3 days ago</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Tips -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>Quick Tips
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Upload PDF files for best quality
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Check printer ratings before selecting
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Save money with double-sided printing
+                        </li>
+                        <li class="mb-0">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Add money to wallet for faster checkout
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        transition: transform 0.2s ease-in-out;
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+        transition: transform 0.2s ease-in-out;
+    }
+</style>
+{% endblock %}

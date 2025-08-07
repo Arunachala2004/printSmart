@@ -1,0 +1,472 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Wallet - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>
+                <i class="fas fa-wallet me-2 text-primary"></i>My Wallet
+            </h2>
+            <p class="text-muted">Manage your account balance and payment methods</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMoneyModal">
+                <i class="fas fa-plus me-2"></i>Add Money
+            </button>
+        </div>
+    </div>
+    
+    <!-- Wallet Balance Card -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card bg-gradient-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h6 class="text-white-50 mb-2">Available Balance</h6>
+                            <h2 class="mb-0">₹{{ wallet_balance|default:"0.00" }}</h2>
+                            <p class="mb-0 opacity-75">Last updated: {{ last_updated|default:"Never" }}</p>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-wallet fa-3x opacity-25"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-4 text-center">
+                            <h5>₹{{ total_spent|default:"0.00" }}</h5>
+                            <small class="opacity-75">Total Spent</small>
+                        </div>
+                        <div class="col-4 text-center">
+                            <h5>₹{{ total_added|default:"0.00" }}</h5>
+                            <small class="opacity-75">Total Added</small>
+                        </div>
+                        <div class="col-4 text-center">
+                            <h5>{{ total_transactions|default:"0" }}</h5>
+                            <small class="opacity-75">Transactions</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-gift me-2"></i>Rewards & Offers
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Cashback Points</span>
+                            <span class="badge bg-warning">{{ cashback_points|default:"0" }}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Referral Bonus</span>
+                            <span class="text-success">₹{{ referral_bonus|default:"0.00" }}</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm w-100">
+                        <i class="fas fa-share me-2"></i>Refer Friends
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <button class="btn btn-outline-success w-100 h-100 d-flex flex-column justify-content-center" data-bs-toggle="modal" data-bs-target="#addMoneyModal">
+                                <i class="fas fa-plus fa-2x mb-2"></i>
+                                <span>Add Money</span>
+                            </button>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <button class="btn btn-outline-info w-100 h-100 d-flex flex-column justify-content-center" onclick="viewTransactions()">
+                                <i class="fas fa-history fa-2x mb-2"></i>
+                                <span>View History</span>
+                            </button>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <button class="btn btn-outline-warning w-100 h-100 d-flex flex-column justify-content-center" onclick="downloadStatement()">
+                                <i class="fas fa-file-pdf fa-2x mb-2"></i>
+                                <span>Download Statement</span>
+                            </button>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <button class="btn btn-outline-primary w-100 h-100 d-flex flex-column justify-content-center" data-bs-toggle="modal" data-bs-target="#autoRechargeModal">
+                                <i class="fas fa-sync fa-2x mb-2"></i>
+                                <span>Auto Recharge</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Transactions -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-history me-2"></i>Recent Transactions
+            </h5>
+            <button class="btn btn-sm btn-outline-primary" onclick="viewAllTransactions()">
+                View All
+            </button>
+        </div>
+        <div class="card-body">
+            {% if transactions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Balance</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>
+                                    {{ transaction.created_at|date:"M d, Y" }}<br>
+                                    <small class="text-muted">{{ transaction.created_at|time:"H:i" }}</small>
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>{{ transaction.description }}</strong>
+                                        {% if transaction.reference %}
+                                            <br><small class="text-muted">Ref: {{ transaction.reference }}</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if transaction.transaction_type == 'credit' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-plus me-1"></i>Credit
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-minus me-1"></i>Debit
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if transaction.transaction_type == 'credit' %}
+                                        <span class="text-success">+₹{{ transaction.amount }}</span>
+                                    {% else %}
+                                        <span class="text-danger">-₹{{ transaction.amount }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>₹{{ transaction.balance_after }}</td>
+                                <td>
+                                    {% if transaction.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif transaction.status == 'pending' %}
+                                        <span class="badge bg-warning">Pending</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                    <h6 class="text-muted">No transactions yet</h6>
+                    <p class="text-muted">Your wallet activity will appear here</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Money Modal -->
+<div class="modal fade" id="addMoneyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>Add Money to Wallet
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addMoneyForm">
+                    {% csrf_token %}
+                    
+                    <!-- Quick Amount Selection -->
+                    <div class="mb-3">
+                        <label class="form-label">Quick Select Amount</label>
+                        <div class="row">
+                            <div class="col-4 mb-2">
+                                <button type="button" class="btn btn-outline-primary w-100 quick-amount" data-amount="100">₹100</button>
+                            </div>
+                            <div class="col-4 mb-2">
+                                <button type="button" class="btn btn-outline-primary w-100 quick-amount" data-amount="250">₹250</button>
+                            </div>
+                            <div class="col-4 mb-2">
+                                <button type="button" class="btn btn-outline-primary w-100 quick-amount" data-amount="500">₹500</button>
+                            </div>
+                            <div class="col-4 mb-2">
+                                <button type="button" class="btn btn-outline-primary w-100 quick-amount" data-amount="1000">₹1000</button>
+                            </div>
+                            <div class="col-4 mb-2">
+                                <button type="button" class="btn btn-outline-primary w-100 quick-amount" data-amount="2000">₹2000</button>
+                            </div>
+                            <div class="col-4 mb-2">
+                                <button type="button" class="btn btn-outline-primary w-100 quick-amount" data-amount="5000">₹5000</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Custom Amount -->
+                    <div class="mb-3">
+                        <label for="customAmount" class="form-label">Or Enter Custom Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="customAmount" 
+                                   name="amount" 
+                                   min="10" 
+                                   max="50000" 
+                                   placeholder="Enter amount">
+                        </div>
+                        <div class="form-text">Minimum: ₹10, Maximum: ₹50,000</div>
+                    </div>
+                    
+                    <!-- Payment Method -->
+                    <div class="mb-3">
+                        <label class="form-label">Payment Method</label>
+                        <div class="list-group">
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="radio" name="payment_method" value="upi" checked>
+                                <i class="fas fa-mobile-alt me-2"></i>UPI / Mobile Wallet
+                                <small class="text-muted d-block">Instant payment via UPI</small>
+                            </label>
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="radio" name="payment_method" value="card">
+                                <i class="fas fa-credit-card me-2"></i>Credit / Debit Card
+                                <small class="text-muted d-block">Secure card payment</small>
+                            </label>
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="radio" name="payment_method" value="netbanking">
+                                <i class="fas fa-university me-2"></i>Net Banking
+                                <small class="text-muted d-block">Direct bank transfer</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Offers -->
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Special Offer:</strong> Add ₹500 or more and get 2% bonus credit!
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="proceedPayment" disabled>
+                    <i class="fas fa-credit-card me-2"></i>Proceed to Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Auto Recharge Modal -->
+<div class="modal fade" id="autoRechargeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-sync me-2"></i>Auto Recharge Settings
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="autoRechargeForm">
+                    {% csrf_token %}
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="enableAutoRecharge" name="enable_auto_recharge">
+                        <label class="form-check-label" for="enableAutoRecharge">
+                            Enable Auto Recharge
+                        </label>
+                    </div>
+                    
+                    <div id="autoRechargeSettings" style="display: none;">
+                        <div class="mb-3">
+                            <label for="minBalance" class="form-label">Recharge when balance falls below</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="minBalance" name="min_balance" value="50">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="rechargeAmount" class="form-label">Recharge Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="rechargeAmount" name="recharge_amount" value="500">
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Auto recharge will use your default payment method.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Save Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Quick amount selection
+        document.querySelectorAll('.quick-amount').forEach(button => {
+            button.addEventListener('click', function() {
+                const amount = this.dataset.amount;
+                document.getElementById('customAmount').value = amount;
+                
+                // Remove active class from all buttons
+                document.querySelectorAll('.quick-amount').forEach(btn => {
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-outline-primary');
+                });
+                
+                // Add active class to clicked button
+                this.classList.remove('btn-outline-primary');
+                this.classList.add('btn-primary');
+                
+                // Enable proceed button
+                document.getElementById('proceedPayment').disabled = false;
+            });
+        });
+        
+        // Custom amount input
+        document.getElementById('customAmount').addEventListener('input', function() {
+            const amount = parseFloat(this.value);
+            const proceedBtn = document.getElementById('proceedPayment');
+            
+            // Remove active class from quick amount buttons
+            document.querySelectorAll('.quick-amount').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-primary');
+            });
+            
+            if (amount >= 10 && amount <= 50000) {
+                proceedBtn.disabled = false;
+            } else {
+                proceedBtn.disabled = true;
+            }
+        });
+        
+        // Proceed to payment
+        document.getElementById('proceedPayment').addEventListener('click', function() {
+            const amount = document.getElementById('customAmount').value;
+            const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+            
+            if (amount && paymentMethod) {
+                // In a real implementation, this would integrate with a payment gateway
+                alert(`Proceeding to payment of ₹${amount} via ${paymentMethod}`);
+                
+                // Simulate payment process
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+                this.disabled = true;
+                
+                setTimeout(() => {
+                    alert('Payment successful! Your wallet has been credited.');
+                    location.reload();
+                }, 2000);
+            }
+        });
+        
+        // Auto recharge toggle
+        document.getElementById('enableAutoRecharge').addEventListener('change', function() {
+            const settings = document.getElementById('autoRechargeSettings');
+            if (this.checked) {
+                settings.style.display = 'block';
+            } else {
+                settings.style.display = 'none';
+            }
+        });
+    });
+    
+    function viewTransactions() {
+        // In a real implementation, this would navigate to transactions page
+        window.location.href = '{% url "web:wallet" %}?view=transactions';
+    }
+    
+    function viewAllTransactions() {
+        // In a real implementation, this would navigate to full transactions page
+        window.location.href = '{% url "web:wallet" %}?view=all_transactions';
+    }
+    
+    function downloadStatement() {
+        // In a real implementation, this would generate and download a PDF statement
+        if (confirm('Download wallet statement for the current month?')) {
+            window.location.href = '/wallet/statement/download/';
+        }
+    }
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+    }
+    
+    .quick-amount:hover {
+        transform: translateY(-2px);
+        transition: transform 0.2s ease-in-out;
+    }
+    
+    .list-group-item {
+        cursor: pointer;
+        transition: background-color 0.2s ease-in-out;
+    }
+    
+    .list-group-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .list-group-item input[type="radio"]:checked + .fas + span {
+        font-weight: bold;
+    }
+</style>
+{% endblock %}

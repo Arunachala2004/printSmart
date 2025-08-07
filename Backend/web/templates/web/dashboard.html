@@ -1,0 +1,233 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Dashboard - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1 class="card-title mb-1">Welcome back, {{ user.first_name|default:user.username }}!</h1>
+                            <p class="card-text opacity-75">Here's what's happening with your printing tasks today.</p>
+                        </div>
+                        <div class="text-end">
+                            <i class="fas fa-tachometer-alt fa-4x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-number">{{ total_files|default:"0" }}</div>
+                        <div class="text-muted">Total Files</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-file"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="stats-card success">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-number">{{ print_jobs_completed|default:"0" }}</div>
+                        <div class="text-muted">Completed Jobs</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="stats-card warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-number">{{ print_jobs_pending|default:"0" }}</div>
+                        <div class="text-muted">Pending Jobs</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="stats-card info">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-number">₹{{ wallet_balance|default:"0.00"|floatformat:2 }}</div>
+                        <div class="text-muted">Wallet Balance</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{% url 'web:upload_file' %}" class="btn btn-primary w-100 py-3">
+                                <i class="fas fa-upload fa-2x d-block mb-2"></i>
+                                Upload File
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{% url 'web:files' %}" class="btn btn-outline-primary w-100 py-3">
+                                <i class="fas fa-file fa-2x d-block mb-2"></i>
+                                View Files
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{% url 'web:printers' %}" class="btn btn-outline-success w-100 py-3">
+                                <i class="fas fa-print fa-2x d-block mb-2"></i>
+                                Find Printers
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <a href="{% url 'web:add_money' %}" class="btn btn-outline-info w-100 py-3">
+                                <i class="fas fa-plus-circle fa-2x d-block mb-2"></i>
+                                Add Money
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Print Jobs</h5>
+                    <a href="{% url 'web:print_jobs' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_print_jobs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>File</th>
+                                    <th>Printer</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in recent_print_jobs %}
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-file me-2"></i>
+                                        {{ job.file.filename|truncatechars:30 }}
+                                    </td>
+                                    <td>{{ job.printer.name }}</td>
+                                    <td>
+                                        {% if job.status == 'completed' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>Completed
+                                        </span>
+                                        {% elif job.status == 'pending' %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock me-1"></i>Pending
+                                        </span>
+                                        {% elif job.status == 'printing' %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-print me-1"></i>Printing
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times me-1"></i>Failed
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ job.created_at|date:"M d, Y" }}</td>
+                                    <td>₹{{ job.cost|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-print fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">No print jobs yet</h6>
+                        <p class="text-muted">Start by uploading a file and creating your first print job!</p>
+                        <a href="{% url 'web:upload_file' %}" class="btn btn-primary">Upload File</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-file me-2"></i>Recent Files</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_files %}
+                    <div class="list-group list-group-flush">
+                        {% for file in recent_files %}
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-file-alt fa-2x text-primary"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ file.filename|truncatechars:25 }}</h6>
+                                    <small class="text-muted">{{ file.uploaded_at|timesince }} ago</small>
+                                </div>
+                                <div>
+                                    <a href="{% url 'web:file_detail' file.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'web:files' %}" class="btn btn-sm btn-outline-primary">View All Files</a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-file fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">No files uploaded</h6>
+                        <a href="{% url 'web:upload_file' %}" class="btn btn-sm btn-primary">Upload First File</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -7,19 +7,18 @@ payment integration, and user management.
 
 import os
 from pathlib import Path
-from decouple import config
 from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
+SECRET_KEY = 'django-insecure-change-this-in-production-but-ok-for-development'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = True
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 
 # Application definition
 INSTALLED_APPS = [
@@ -42,6 +41,7 @@ INSTALLED_APPS = [
     'files',
     'print_jobs',
     'payments',
+    'web',  # Web frontend app
 ]
 
 MIDDLEWARE = [
@@ -150,13 +150,13 @@ REST_FRAMEWORK = {
 
 # JWT Configuration
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=config('JWT_ACCESS_TOKEN_LIFETIME_MINUTES', default=60, cast=int)),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=config('JWT_REFRESH_TOKEN_LIFETIME_DAYS', default=7, cast=int)),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': config('JWT_SECRET_KEY', default=SECRET_KEY),
+    'SIGNING_KEY': SECRET_KEY,
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
@@ -186,19 +186,19 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # File Upload Settings
-MAX_FILE_SIZE = config('MAX_FILE_SIZE_MB', default=50, cast=int) * 1024 * 1024  # Convert to bytes
-ALLOWED_FILE_TYPES = config('ALLOWED_FILE_TYPES', default='pdf,docx,jpg,jpeg,png').split(',')
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB in bytes
+ALLOWED_FILE_TYPES = ['pdf', 'docx', 'jpg', 'jpeg', 'png']
 
 # Print Management Settings
-DEFAULT_PRINTER_NAME = config('DEFAULT_PRINTER_NAME', default='Default Printer')
+DEFAULT_PRINTER_NAME = 'Default Printer'
 
 # Razorpay Configuration
-RAZORPAY_KEY_ID = config('RAZORPAY_KEY_ID', default='')
-RAZORPAY_KEY_SECRET = config('RAZORPAY_KEY_SECRET', default='')
+RAZORPAY_KEY_ID = ''
+RAZORPAY_KEY_SECRET = ''
 
 # Celery Configuration
-CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -206,11 +206,11 @@ CELERY_TIMEZONE = TIME_ZONE
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = ''
+EMAIL_HOST_PASSWORD = ''
 
 # Logging Configuration
 LOGGING = {
@@ -243,17 +243,17 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console', 'file'],
-        'level': config('LOG_LEVEL', default='INFO'),
+        'level': 'INFO',
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': config('LOG_LEVEL', default='INFO'),
+            'level': 'INFO',
             'propagate': False,
         },
         'printsmart': {
             'handlers': ['console', 'file'],
-            'level': config('LOG_LEVEL', default='INFO'),
+            'level': 'INFO',
             'propagate': False,
         },
     },

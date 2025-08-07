@@ -1,0 +1,312 @@
+{% extends 'web/base.html' %}
+
+{% block title %}My Files - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="fas fa-file me-2"></i>My Files</h2>
+                    <p class="text-muted mb-0">Manage and organize your uploaded documents</p>
+                </div>
+                <div>
+                    <a href="{% url 'web:upload_file' %}" class="btn btn-primary">
+                        <i class="fas fa-upload me-2"></i>Upload New File
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-number">{{ total_files|default:"0" }}</div>
+                        <div class="text-muted">Total Files</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-file"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card info">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-number">{{ total_size_mb|default:"0"|floatformat:1 }}MB</div>
+                        <div class="text-muted">Total Size</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-hdd"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card success">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-number">{{ files_printed|default:"0" }}</div>
+                        <div class="text-muted">Files Printed</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-print"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-number">{{ files_pending|default:"0" }}</div>
+                        <div class="text-muted">Pending Print</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Filters and Search -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search Files</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   placeholder="Search by filename..." value="{{ request.GET.search }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="file_type" class="form-label">File Type</label>
+                            <select class="form-select" id="file_type" name="file_type">
+                                <option value="">All Types</option>
+                                <option value="pdf" {% if request.GET.file_type == 'pdf' %}selected{% endif %}>PDF</option>
+                                <option value="doc" {% if request.GET.file_type == 'doc' %}selected{% endif %}>DOC</option>
+                                <option value="docx" {% if request.GET.file_type == 'docx' %}selected{% endif %}>DOCX</option>
+                                <option value="txt" {% if request.GET.file_type == 'txt' %}selected{% endif %}>TXT</option>
+                                <option value="image" {% if request.GET.file_type == 'image' %}selected{% endif %}>Images</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="sort_by" class="form-label">Sort By</label>
+                            <select class="form-select" id="sort_by" name="sort_by">
+                                <option value="-uploaded_at" {% if request.GET.sort_by == '-uploaded_at' %}selected{% endif %}>Newest First</option>
+                                <option value="uploaded_at" {% if request.GET.sort_by == 'uploaded_at' %}selected{% endif %}>Oldest First</option>
+                                <option value="filename" {% if request.GET.sort_by == 'filename' %}selected{% endif %}>Name A-Z</option>
+                                <option value="-filename" {% if request.GET.sort_by == '-filename' %}selected{% endif %}>Name Z-A</option>
+                                <option value="file_size" {% if request.GET.sort_by == 'file_size' %}selected{% endif %}>Size (Small)</option>
+                                <option value="-file_size" {% if request.GET.sort_by == '-file_size' %}selected{% endif %}>Size (Large)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-2"></i>Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Files Grid/List -->
+    {% if files %}
+    <div class="row">
+        {% for file in files %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card file-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="file-icon">
+                            {% if file.file_type == 'pdf' %}
+                            <i class="fas fa-file-pdf fa-3x text-danger"></i>
+                            {% elif file.file_type == 'doc' or file.file_type == 'docx' %}
+                            <i class="fas fa-file-word fa-3x text-primary"></i>
+                            {% elif file.file_type == 'txt' %}
+                            <i class="fas fa-file-alt fa-3x text-secondary"></i>
+                            {% elif 'image' in file.file_type or file.file_type in 'jpg,jpeg,png,gif' %}
+                            <i class="fas fa-file-image fa-3x text-success"></i>
+                            {% else %}
+                            <i class="fas fa-file fa-3x text-muted"></i>
+                            {% endif %}
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{% url 'web:file_detail' file.id %}">
+                                    <i class="fas fa-eye me-2"></i>View Details
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'web:print_file' file.id %}">
+                                    <i class="fas fa-print me-2"></i>Print
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{% url 'web:delete_file' file.id %}">
+                                    <i class="fas fa-trash me-2"></i>Delete
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h6 class="card-title text-truncate" title="{{ file.original_filename }}">{{ file.original_filename }}</h6>
+                    
+                    <div class="file-details">
+                        <small class="text-muted d-block">
+                            <i class="fas fa-calendar me-1"></i>{{ file.created_at|date:"M d, Y" }}
+                        </small>
+                        <small class="text-muted d-block">
+                            <i class="fas fa-weight me-1"></i>{{ file.file_size|filesizeformat }}
+                        </small>
+                        {% if file.print_jobs.count > 0 %}
+                        <small class="text-success d-block">
+                            <i class="fas fa-print me-1"></i>{{ file.print_jobs.count }} print job{{ file.print_jobs.count|pluralize }}
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'web:file_detail' file.id %}" class="btn btn-sm btn-outline-primary flex-fill">
+                            <i class="fas fa-eye me-1"></i>View
+                        </a>
+                        <a href="{% url 'web:print_file' file.id %}" class="btn btn-sm btn-primary flex-fill">
+                            <i class="fas fa-print me-1"></i>Print
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="Files pagination">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.file_type %}&file_type={{ request.GET.file_type }}{% endif %}">First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.file_type %}&file_type={{ request.GET.file_type }}{% endif %}">Previous</a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.file_type %}&file_type={{ request.GET.file_type }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.file_type %}&file_type={{ request.GET.file_type }}{% endif %}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.file_type %}&file_type={{ request.GET.file_type }}{% endif %}">Last</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-file fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted">No files found</h4>
+                    <p class="text-muted">
+                        {% if request.GET.search or request.GET.file_type %}
+                        Try adjusting your search criteria or filter options.
+                        {% else %}
+                        Upload your first document to get started with printing.
+                        {% endif %}
+                    </p>
+                    <div class="mt-4">
+                        {% if request.GET.search or request.GET.file_type %}
+                        <a href="{% url 'web:files' %}" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-times me-2"></i>Clear Filters
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'web:upload_file' %}" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Upload First File
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Upload New File Form -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload New File
+                </h5>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="file" class="form-label">Select File</label>
+                                <input type="file" class="form-control" id="file" name="file" required
+                                       accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Title (Optional)</label>
+                                <input type="text" class="form-control" id="title" name="title" 
+                                       placeholder="Enter file title">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="Enter file description"></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_shared" name="is_shared">
+                        <label class="form-check-label" for="is_shared">
+                            Make this file shareable
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Upload File
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

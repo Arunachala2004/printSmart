@@ -1,0 +1,550 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Find Printers - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>
+                <i class="fas fa-search me-2 text-primary"></i>Find Printers
+            </h2>
+            <p class="text-muted">Discover nearby printing locations and services</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-outline-secondary" onclick="getCurrentLocation()">
+                <i class="fas fa-location-arrow me-2"></i>Use My Location
+            </button>
+        </div>
+    </div>
+    
+    <!-- Search and Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="Enter location..." id="locationSearch">
+                        <button class="btn btn-outline-secondary" type="button" onclick="searchByLocation()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <select class="form-select" id="radiusFilter">
+                        <option value="1">1 km</option>
+                        <option value="2" selected>2 km</option>
+                        <option value="5">5 km</option>
+                        <option value="10">10 km</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <select class="form-select" id="serviceFilter">
+                        <option value="">All Services</option>
+                        <option value="color">Color Printing</option>
+                        <option value="binding">Binding</option>
+                        <option value="lamination">Lamination</option>
+                        <option value="scanning">Scanning</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <select class="form-select" id="sortBy">
+                        <option value="distance">Distance</option>
+                        <option value="rating">Rating</option>
+                        <option value="price">Price</option>
+                        <option value="reviews">Reviews</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="fas fa-filter me-2"></i>Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Map View -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-map me-2"></i>Printer Locations
+                    </h5>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-secondary btn-sm active" id="mapView">
+                            <i class="fas fa-map"></i> Map
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="listView">
+                            <i class="fas fa-list"></i> List
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Map Container -->
+                    <div id="mapContainer" style="height: 400px; background: linear-gradient(45deg, #f8f9fa, #e9ecef); position: relative;">
+                        <div class="d-flex align-items-center justify-content-center h-100">
+                            <div class="text-center">
+                                <i class="fas fa-map fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">Interactive Map</h5>
+                                <p class="text-muted">Map will be integrated with Google Maps API</p>
+                                <button class="btn btn-primary" onclick="loadMap()">
+                                    <i class="fas fa-play me-2"></i>Load Map
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Mock Map Markers -->
+                        <div class="position-absolute" style="top: 20%; left: 30%;">
+                            <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; cursor: pointer;" onclick="showPrinterInfo('printer1')">
+                                <small>A</small>
+                            </div>
+                        </div>
+                        <div class="position-absolute" style="top: 60%; left: 60%;">
+                            <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; cursor: pointer;" onclick="showPrinterInfo('printer2')">
+                                <small>B</small>
+                            </div>
+                        </div>
+                        <div class="position-absolute" style="top: 40%; left: 80%;">
+                            <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; cursor: pointer;" onclick="showPrinterInfo('printer3')">
+                                <small>C</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- List View (Hidden initially) -->
+                    <div id="listContainer" style="display: none; max-height: 400px; overflow-y: auto;">
+                        {% if printers %}
+                            {% for printer in printers %}
+                            <div class="border-bottom p-3 printer-item" data-printer-id="{{ printer.id }}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h6 class="mb-1">{{ printer.name }}</h6>
+                                        <p class="text-muted mb-2">
+                                            <i class="fas fa-map-marker-alt me-1"></i>{{ printer.address }}
+                                        </p>
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="fas fa-star me-1"></i>{{ printer.rating|default:"4.5" }}
+                                                </span>
+                                            </div>
+                                            <div class="me-3">
+                                                <small class="text-muted">{{ printer.distance|default:"0.8" }} km away</small>
+                                            </div>
+                                            <div>
+                                                <small class="text-success">₹{{ printer.price_per_page|default:"2" }}/page</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="viewPrinterDetails('{{ printer.id }}')">
+                                                <i class="fas fa-info"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-primary" onclick="selectPrinter('{{ printer.id }}')">
+                                                <i class="fas fa-check"></i> Select
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                                <h6 class="text-muted">No printers found</h6>
+                                <p class="text-muted">Try adjusting your search criteria</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Printer Details Sidebar -->
+        <div class="col-lg-4">
+            <!-- Featured Printers -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-star me-2"></i>Top Rated Printers
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">PrintHub Express</h6>
+                                    <p class="mb-1 small text-muted">MG Road, Sector 14</p>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-warning text-dark me-2">
+                                            <i class="fas fa-star me-1"></i>4.8
+                                        </span>
+                                        <small class="text-success">₹1.50/page</small>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="selectPrinter('printer1')">
+                                    Select
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">Quick Print Solutions</h6>
+                                    <p class="mb-1 small text-muted">City Center Mall</p>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-warning text-dark me-2">
+                                            <i class="fas fa-star me-1"></i>4.7
+                                        </span>
+                                        <small class="text-success">₹2.00/page</small>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="selectPrinter('printer2')">
+                                    Select
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">Digital Print Center</h6>
+                                    <p class="mb-1 small text-muted">University Area</p>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-warning text-dark me-2">
+                                            <i class="fas fa-star me-1"></i>4.6
+                                        </span>
+                                        <small class="text-success">₹1.80/page</small>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="selectPrinter('printer3')">
+                                    Select
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Filters -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sliders-h me-2"></i>Quick Filters
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Services Available</h6>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="colorPrinting">
+                            <label class="form-check-label" for="colorPrinting">
+                                Color Printing
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="binding">
+                            <label class="form-check-label" for="binding">
+                                Binding Services
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="lamination">
+                            <label class="form-check-label" for="lamination">
+                                Lamination
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="scanning">
+                            <label class="form-check-label" for="scanning">
+                                Scanning
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Price Range</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="number" class="form-control form-control-sm" placeholder="Min ₹" id="minPrice">
+                            </div>
+                            <div class="col-6">
+                                <input type="number" class="form-control form-control-sm" placeholder="Max ₹" id="maxPrice">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Rating</h6>
+                        <select class="form-select form-select-sm" id="minRating">
+                            <option value="">Any Rating</option>
+                            <option value="4">4+ Stars</option>
+                            <option value="4.5">4.5+ Stars</option>
+                            <option value="4.8">4.8+ Stars</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="fas fa-search me-2"></i>Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Printer Details Modal -->
+<div class="modal fade" id="printerDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-print me-2"></i>Printer Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="printerDetailsContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">
+                    <i class="fas fa-check me-2"></i>Select This Printer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // View toggle
+    document.getElementById('mapView').addEventListener('click', function() {
+        document.getElementById('mapContainer').style.display = 'block';
+        document.getElementById('listContainer').style.display = 'none';
+        this.classList.add('active');
+        document.getElementById('listView').classList.remove('active');
+    });
+    
+    document.getElementById('listView').addEventListener('click', function() {
+        document.getElementById('mapContainer').style.display = 'none';
+        document.getElementById('listContainer').style.display = 'block';
+        this.classList.add('active');
+        document.getElementById('mapView').classList.remove('active');
+    });
+    
+    function getCurrentLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                // In a real implementation, this would reverse geocode the coordinates
+                document.getElementById('locationSearch').value = `Current Location (${lat.toFixed(2)}, ${lng.toFixed(2)})`;
+                searchByLocation();
+            }, function(error) {
+                alert('Unable to get your location. Please enter manually.');
+            });
+        } else {
+            alert('Geolocation is not supported by this browser.');
+        }
+    }
+    
+    function searchByLocation() {
+        const location = document.getElementById('locationSearch').value;
+        if (location) {
+            // In a real implementation, this would search for printers near the location
+            console.log('Searching for printers near:', location);
+            // Simulate search results
+            alert(`Searching for printers near "${location}"`);
+        }
+    }
+    
+    function applyFilters() {
+        const radius = document.getElementById('radiusFilter').value;
+        const service = document.getElementById('serviceFilter').value;
+        const sortBy = document.getElementById('sortBy').value;
+        
+        // Collect checkbox filters
+        const services = [];
+        if (document.getElementById('colorPrinting').checked) services.push('color');
+        if (document.getElementById('binding').checked) services.push('binding');
+        if (document.getElementById('lamination').checked) services.push('lamination');
+        if (document.getElementById('scanning').checked) services.push('scanning');
+        
+        const minPrice = document.getElementById('minPrice').value;
+        const maxPrice = document.getElementById('maxPrice').value;
+        const minRating = document.getElementById('minRating').value;
+        
+        // In a real implementation, this would apply filters and reload results
+        console.log('Applying filters:', {
+            radius, service, sortBy, services, minPrice, maxPrice, minRating
+        });
+        
+        alert('Filters applied! Results updated.');
+    }
+    
+    function showPrinterInfo(printerId) {
+        // Mock printer info popup
+        const printerInfo = {
+            printer1: { name: 'PrintHub Express', rating: 4.8, price: '₹1.50/page' },
+            printer2: { name: 'Quick Print Solutions', rating: 4.7, price: '₹2.00/page' },
+            printer3: { name: 'Digital Print Center', rating: 4.6, price: '₹1.80/page' }
+        };
+        
+        const info = printerInfo[printerId];
+        if (info) {
+            alert(`${info.name}\nRating: ${info.rating}/5\nPrice: ${info.price}`);
+        }
+    }
+    
+    function viewPrinterDetails(printerId) {
+        const modal = new bootstrap.Modal(document.getElementById('printerDetailsModal'));
+        
+        // Mock printer details
+        document.getElementById('printerDetailsContent').innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Basic Information</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>Name:</strong></td><td>PrintHub Express</td></tr>
+                        <tr><td><strong>Rating:</strong></td><td><span class="badge bg-warning text-dark">4.8/5</span></td></tr>
+                        <tr><td><strong>Distance:</strong></td><td>0.8 km</td></tr>
+                        <tr><td><strong>Status:</strong></td><td><span class="badge bg-success">Open</span></td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6>Contact & Location</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>Phone:</strong></td><td>+91 98765 43210</td></tr>
+                        <tr><td><strong>Address:</strong></td><td>MG Road, Sector 14</td></tr>
+                        <tr><td><strong>Hours:</strong></td><td>9 AM - 9 PM</td></tr>
+                        <tr><td><strong>Delivery:</strong></td><td>Available</td></tr>
+                    </table>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-12">
+                    <h6>Services & Pricing</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th>Price</th>
+                                    <th>Available</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Black & White Printing</td>
+                                    <td>₹1.50/page</td>
+                                    <td><i class="fas fa-check text-success"></i></td>
+                                </tr>
+                                <tr>
+                                    <td>Color Printing</td>
+                                    <td>₹5.00/page</td>
+                                    <td><i class="fas fa-check text-success"></i></td>
+                                </tr>
+                                <tr>
+                                    <td>Binding</td>
+                                    <td>₹20.00/book</td>
+                                    <td><i class="fas fa-check text-success"></i></td>
+                                </tr>
+                                <tr>
+                                    <td>Lamination</td>
+                                    <td>₹10.00/page</td>
+                                    <td><i class="fas fa-times text-danger"></i></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-12">
+                    <h6>Recent Reviews</h6>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <strong>Rajesh K.</strong>
+                            <span class="badge bg-warning text-dark">5/5</span>
+                        </div>
+                        <p class="small text-muted mb-1">"Excellent service and quick delivery!"</p>
+                        <small class="text-muted">2 days ago</small>
+                    </div>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <strong>Priya S.</strong>
+                            <span class="badge bg-warning text-dark">4/5</span>
+                        </div>
+                        <p class="small text-muted mb-1">"Good quality prints, reasonable prices."</p>
+                        <small class="text-muted">1 week ago</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        modal.show();
+    }
+    
+    function selectPrinter(printerId) {
+        // In a real implementation, this would redirect to print job creation
+        if (confirm('Select this printer for your print job?')) {
+            window.location.href = `/files/upload/?printer=${printerId}`;
+        }
+    }
+    
+    function loadMap() {
+        // In a real implementation, this would load Google Maps
+        document.querySelector('#mapContainer .d-flex').innerHTML = `
+            <div class="w-100 h-100 d-flex align-items-center justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading map...</span>
+                </div>
+            </div>
+        `;
+        
+        setTimeout(() => {
+            alert('Map loaded! In a real implementation, this would show Google Maps with printer locations.');
+        }, 2000);
+    }
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .printer-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .printer-item .btn-group {
+        opacity: 0.7;
+        transition: opacity 0.2s ease-in-out;
+    }
+    
+    .printer-item:hover .btn-group {
+        opacity: 1;
+    }
+    
+    #mapContainer {
+        border-radius: 0.375rem;
+    }
+    
+    .form-check-input:checked {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+</style>
+{% endblock %}

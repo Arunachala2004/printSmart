@@ -1,0 +1,358 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Printers - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="fas fa-print me-2"></i>Available Printers</h2>
+                    <p class="text-muted mb-0">Find and connect to printers near you</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary" onclick="refreshPrinters()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printer Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label for="location" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="location" name="location" 
+                                   placeholder="Search by location..." value="{{ request.GET.location }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="printer_type" class="form-label">Printer Type</label>
+                            <select class="form-select" id="printer_type" name="printer_type">
+                                <option value="">All Types</option>
+                                <option value="laser" {% if request.GET.printer_type == 'laser' %}selected{% endif %}>Laser</option>
+                                <option value="inkjet" {% if request.GET.printer_type == 'inkjet' %}selected{% endif %}>Inkjet</option>
+                                <option value="photo" {% if request.GET.printer_type == 'photo' %}selected{% endif %}>Photo</option>
+                                <option value="3d" {% if request.GET.printer_type == '3d' %}selected{% endif %}>3D Printer</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="color_support" class="form-label">Color</label>
+                            <select class="form-select" id="color_support" name="color_support">
+                                <option value="">All</option>
+                                <option value="true" {% if request.GET.color_support == 'true' %}selected{% endif %}>Color</option>
+                                <option value="false" {% if request.GET.color_support == 'false' %}selected{% endif %}>Black & White</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All</option>
+                                <option value="online" {% if request.GET.status == 'online' %}selected{% endif %}>Online</option>
+                                <option value="busy" {% if request.GET.status == 'busy' %}selected{% endif %}>Busy</option>
+                                <option value="maintenance" {% if request.GET.status == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-2"></i>Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printers Grid -->
+    {% if printers %}
+    <div class="row">
+        {% for printer in printers %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card printer-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="printer-icon">
+                            {% if printer.printer_type == 'laser' %}
+                            <i class="fas fa-print fa-3x text-primary"></i>
+                            {% elif printer.printer_type == 'inkjet' %}
+                            <i class="fas fa-print fa-3x text-info"></i>
+                            {% elif printer.printer_type == 'photo' %}
+                            <i class="fas fa-image fa-3x text-success"></i>
+                            {% elif printer.printer_type == '3d' %}
+                            <i class="fas fa-cube fa-3x text-warning"></i>
+                            {% else %}
+                            <i class="fas fa-print fa-3x text-secondary"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            {% if printer.status == 'online' %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-circle me-1"></i>Online
+                            </span>
+                            {% elif printer.status == 'busy' %}
+                            <span class="badge bg-warning">
+                                <i class="fas fa-clock me-1"></i>Busy
+                            </span>
+                            {% elif printer.status == 'maintenance' %}
+                            <span class="badge bg-danger">
+                                <i class="fas fa-tools me-1"></i>Maintenance
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-minus-circle me-1"></i>Offline
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <h5 class="card-title">{{ printer.name }}</h5>
+                    <p class="text-muted mb-2">
+                        <i class="fas fa-map-marker-alt me-1"></i>{{ printer.location }}
+                    </p>
+                    
+                    <div class="printer-specs mb-3">
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Type</small>
+                                <strong>{{ printer.get_printer_type_display }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Color</small>
+                                <strong>
+                                    {% if printer.color_support %}
+                                    <i class="fas fa-palette text-success me-1"></i>Yes
+                                    {% else %}
+                                    <i class="fas fa-circle text-secondary me-1"></i>B&W Only
+                                    {% endif %}
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="printer-pricing mb-3">
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted d-block">B&W per page</small>
+                                <strong>₹{{ printer.price_per_page_bw|floatformat:2 }}</strong>
+                            </div>
+                            {% if printer.color_support %}
+                            <div class="col-6">
+                                <small class="text-muted d-block">Color per page</small>
+                                <strong>₹{{ printer.price_per_page_color|floatformat:2 }}</strong>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if printer.specifications %}
+                    <div class="printer-specs mb-3">
+                        <small class="text-muted">Specifications:</small>
+                        <p class="small">{{ printer.specifications|truncatechars:100 }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if printer.queue_length > 0 %}
+                    <div class="queue-info mb-3">
+                        <small class="text-warning">
+                            <i class="fas fa-queue me-1"></i>{{ printer.queue_length }} job{{ printer.queue_length|pluralize }} in queue
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary flex-fill" data-bs-toggle="modal" 
+                                data-bs-target="#printerModal{{ printer.id }}">
+                            <i class="fas fa-info-circle me-1"></i>Details
+                        </button>
+                        {% if printer.status == 'online' %}
+                        <a href="{% url 'web:select_printer' printer.id %}" class="btn btn-sm btn-primary flex-fill">
+                            <i class="fas fa-print me-1"></i>Use Printer
+                        </a>
+                        {% else %}
+                        <button class="btn btn-sm btn-secondary flex-fill" disabled>
+                            <i class="fas fa-times me-1"></i>Unavailable
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Printer Details Modal -->
+        <div class="modal fade" id="printerModal{{ printer.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ printer.name }} - Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Printer Information</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>Location:</strong></td>
+                                        <td>{{ printer.location }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Type:</strong></td>
+                                        <td>{{ printer.get_printer_type_display }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Color Support:</strong></td>
+                                        <td>
+                                            {% if printer.color_support %}
+                                            <span class="text-success">Yes</span>
+                                            {% else %}
+                                            <span class="text-muted">No</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Status:</strong></td>
+                                        <td>
+                                            {% if printer.status == 'online' %}
+                                            <span class="badge bg-success">Online</span>
+                                            {% elif printer.status == 'busy' %}
+                                            <span class="badge bg-warning">Busy</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">Offline</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Pricing</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>B&W per page:</strong></td>
+                                        <td>₹{{ printer.price_per_page_bw|floatformat:2 }}</td>
+                                    </tr>
+                                    {% if printer.color_support %}
+                                    <tr>
+                                        <td><strong>Color per page:</strong></td>
+                                        <td>₹{{ printer.price_per_page_color|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if printer.queue_length > 0 %}
+                                    <tr>
+                                        <td><strong>Queue:</strong></td>
+                                        <td>{{ printer.queue_length }} job{{ printer.queue_length|pluralize }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                        </div>
+                        {% if printer.specifications %}
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6>Specifications</h6>
+                                <p>{{ printer.specifications }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        {% if printer.status == 'online' %}
+                        <a href="{% url 'web:select_printer' printer.id %}" class="btn btn-primary">
+                            <i class="fas fa-print me-2"></i>Use This Printer
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="Printers pagination">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Last</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-print fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted">No printers found</h4>
+                    <p class="text-muted">
+                        {% if request.GET.location or request.GET.printer_type %}
+                        Try adjusting your search criteria or filter options.
+                        {% else %}
+                        There are currently no printers available in your area.
+                        {% endif %}
+                    </p>
+                    <div class="mt-4">
+                        {% if request.GET.location or request.GET.printer_type %}
+                        <a href="{% url 'web:printers' %}" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-times me-2"></i>Clear Filters
+                        </a>
+                        {% endif %}
+                        <button class="btn btn-primary" onclick="refreshPrinters()">
+                            <i class="fas fa-sync-alt me-2"></i>Refresh List
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function refreshPrinters() {
+    location.reload();
+}
+</script>
+{% endblock %}

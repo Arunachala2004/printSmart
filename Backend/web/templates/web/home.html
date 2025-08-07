@@ -1,0 +1,203 @@
+{% extends 'web/base.html' %}
+
+{% block title %}PrintSmart - Smart Printing Solutions{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Hero Section -->
+    <section class="py-5 bg-primary text-white">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h1 class="display-4 fw-bold mb-4">
+                        Welcome to PrintSmart
+                    </h1>
+                    <p class="lead mb-4">
+                        Your one-stop solution for all printing needs. Upload, print, and manage your documents with ease.
+                    </p>
+                    <div class="d-flex gap-3">
+                        {% if user.is_authenticated %}
+                            <a href="{% url 'web:dashboard' %}" class="btn btn-light btn-lg">
+                                <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+                            </a>
+                            <a href="{% url 'web:upload_file' %}" class="btn btn-outline-light btn-lg">
+                                <i class="fas fa-upload me-2"></i>Upload File
+                            </a>
+                        {% else %}
+                            <a href="{% url 'web:register' %}" class="btn btn-light btn-lg">
+                                <i class="fas fa-user-plus me-2"></i>Get Started
+                            </a>
+                            <a href="{% url 'web:login' %}" class="btn btn-outline-light btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-lg-6 text-center">
+                    <i class="fas fa-print" style="font-size: 10rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 text-center mb-5">
+                    <h2 class="h1 fw-bold">Why Choose PrintSmart?</h2>
+                    <p class="lead text-muted">Experience the future of printing with our smart solutions</p>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100 text-center border-0 shadow">
+                        <div class="card-body p-4">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-cloud-upload-alt fa-2x"></i>
+                            </div>
+                            <h5 class="card-title">Easy Upload</h5>
+                            <p class="card-text text-muted">
+                                Upload your documents in seconds. Support for PDF, Word, Excel, PowerPoint, and image files.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100 text-center border-0 shadow">
+                        <div class="card-body p-4">
+                            <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-print fa-2x"></i>
+                            </div>
+                            <h5 class="card-title">Smart Printing</h5>
+                            <p class="card-text text-muted">
+                                Choose from multiple printers, select print options, and get your documents printed instantly.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100 text-center border-0 shadow">
+                        <div class="card-body p-4">
+                            <div class="bg-info text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-wallet fa-2x"></i>
+                            </div>
+                            <h5 class="card-title">Digital Wallet</h5>
+                            <p class="card-text text-muted">
+                                Manage your printing expenses with our built-in digital wallet. Top up and track your spending.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 text-center mb-5">
+                    <h2 class="h1 fw-bold">How It Works</h2>
+                    <p class="lead text-muted">Get started in just 3 simple steps</p>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-4 text-center">
+                    <div class="position-relative">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 80px; height: 80px; font-size: 2rem; font-weight: bold;">
+                            1
+                        </div>
+                        <h5>Upload Your Files</h5>
+                        <p class="text-muted">
+                            Upload your documents from your computer or mobile device. We support all major file formats.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 text-center">
+                    <div class="position-relative">
+                        <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 80px; height: 80px; font-size: 2rem; font-weight: bold;">
+                            2
+                        </div>
+                        <h5>Choose Print Settings</h5>
+                        <p class="text-muted">
+                            Select your preferred printer, number of copies, color options, and other print settings.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 text-center">
+                    <div class="position-relative">
+                        <div class="bg-info text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 80px; height: 80px; font-size: 2rem; font-weight: bold;">
+                            3
+                        </div>
+                        <h5>Collect Your Prints</h5>
+                        <p class="text-muted">
+                            Pay through your digital wallet and collect your printed documents from the selected printer.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row text-center">
+                <div class="col-md-3 col-sm-6 mb-4">
+                    <div class="p-4">
+                        <h3 class="display-4 fw-bold text-primary">500+</h3>
+                        <p class="lead">Happy Users</p>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-4">
+                    <div class="p-4">
+                        <h3 class="display-4 fw-bold text-success">10K+</h3>
+                        <p class="lead">Documents Printed</p>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-4">
+                    <div class="p-4">
+                        <h3 class="display-4 fw-bold text-warning">24/7</h3>
+                        <p class="lead">Service Available</p>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-4">
+                    <div class="p-4">
+                        <h3 class="display-4 fw-bold text-info">99%</h3>
+                        <p class="lead">Customer Satisfaction</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    {% if not user.is_authenticated %}
+    <section class="py-5 bg-primary text-white">
+        <div class="container text-center">
+            <h2 class="h1 fw-bold mb-4">Ready to Get Started?</h2>
+            <p class="lead mb-4">Join thousands of users who trust PrintSmart for their printing needs.</p>
+            <a href="{% url 'web:register' %}" class="btn btn-light btn-lg me-3">
+                <i class="fas fa-user-plus me-2"></i>Create Account
+            </a>
+            <a href="{% url 'web:login' %}" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-sign-in-alt me-2"></i>Login Now
+            </a>
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

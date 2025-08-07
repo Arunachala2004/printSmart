@@ -1,0 +1,467 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Print Jobs - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>
+                <i class="fas fa-print me-2 text-primary"></i>Print Jobs
+            </h2>
+            <p class="text-muted">Track your printing requests and manage ongoing jobs</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'web:upload_file' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>New Print Job
+            </a>
+        </div>
+    </div>
+    
+    <!-- Job Stats -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                    <h4 class="text-warning">{{ pending_jobs|default:"0" }}</h4>
+                    <p class="text-muted mb-0">Pending</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-cog fa-2x text-info mb-2"></i>
+                    <h4 class="text-info">{{ processing_jobs|default:"0" }}</h4>
+                    <p class="text-muted mb-0">Processing</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                    <h4 class="text-success">{{ completed_jobs|default:"0" }}</h4>
+                    <p class="text-muted mb-0">Completed</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-rupee-sign fa-2x text-primary mb-2"></i>
+                    <h4 class="text-primary">₹{{ total_spent|default:"0.00" }}</h4>
+                    <p class="text-muted mb-0">Total Spent</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-3">
+                    <select class="form-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="dateFilter">
+                        <option value="">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="Search by file name or printer..." id="searchInput">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                        <i class="fas fa-times me-2"></i>Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Print Jobs List -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>Your Print Jobs
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if print_jobs %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Job ID</th>
+                                <th>File</th>
+                                <th>Printer</th>
+                                <th>Pages</th>
+                                <th>Copies</th>
+                                <th>Status</th>
+                                <th>Cost</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job in print_jobs %}
+                            <tr data-job-id="{{ job.id }}">
+                                <td>
+                                    <strong class="text-primary">#{{ job.id|slice:":8" }}</strong>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if job.file.file_type == 'pdf' %}
+                                            <i class="fas fa-file-pdf text-danger me-2"></i>
+                                        {% elif job.file.file_type == 'doc' %}
+                                            <i class="fas fa-file-word text-primary me-2"></i>
+                                        {% else %}
+                                            <i class="fas fa-file text-muted me-2"></i>
+                                        {% endif %}
+                                        <div>
+                                            <strong>{{ job.file.name|truncatechars:30 }}</strong>
+                                            <br><small class="text-muted">{{ job.file.size|filesizeformat }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>{{ job.printer.name }}</strong>
+                                        <br><small class="text-muted">{{ job.printer.location }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ job.pages|default:"Auto" }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ job.copies|default:"1" }}</span>
+                                </td>
+                                <td>
+                                    {% if job.status == 'pending' %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock me-1"></i>Pending
+                                        </span>
+                                    {% elif job.status == 'processing' %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-cog fa-spin me-1"></i>Processing
+                                        </span>
+                                    {% elif job.status == 'completed' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>Completed
+                                        </span>
+                                    {% elif job.status == 'failed' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times me-1"></i>Failed
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ job.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong class="text-success">₹{{ job.total_cost }}</strong>
+                                </td>
+                                <td>
+                                    {{ job.created_at|date:"M d, Y" }}<br>
+                                    <small class="text-muted">{{ job.created_at|time:"H:i" }}</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewJobDetails('{{ job.id }}')" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% if job.status == 'completed' %}
+                                            <button class="btn btn-sm btn-outline-success" onclick="downloadReceipt('{{ job.id }}')" title="Download Receipt">
+                                                <i class="fas fa-receipt"></i>
+                                            </button>
+                                        {% endif %}
+                                        {% if job.status == 'pending' %}
+                                            <button class="btn btn-sm btn-outline-danger" onclick="cancelJob('{{ job.id }}')" title="Cancel Job">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        {% endif %}
+                                        {% if job.status == 'completed' %}
+                                            <button class="btn btn-sm btn-outline-info" onclick="reprintJob('{{ job.id }}')" title="Print Again">
+                                                <i class="fas fa-redo"></i>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <nav aria-label="Print jobs pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1">First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+            {% else %}
+                <!-- Empty State -->
+                <div class="text-center py-5">
+                    <i class="fas fa-print fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted">No print jobs yet</h4>
+                    <p class="text-muted">Upload a file and send it to print to see your jobs here!</p>
+                    <a href="{% url 'web:upload_file' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>Create Your First Print Job
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Job Details Modal -->
+<div class="modal fade" id="jobDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>Job Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="jobDetailsContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Job Modal -->
+<div class="modal fade" id="cancelJobModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cancel Print Job</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this print job?</p>
+                <p><strong>Note:</strong> If payment was made, it will be refunded to your wallet.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Job</button>
+                <button type="button" class="btn btn-danger" id="confirmCancel">
+                    <i class="fas fa-times me-2"></i>Cancel Job
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let jobToCancel = null;
+    
+    function viewJobDetails(jobId) {
+        // In a real implementation, this would fetch job details via AJAX
+        const modal = new bootstrap.Modal(document.getElementById('jobDetailsModal'));
+        
+        // Mock job details
+        document.getElementById('jobDetailsContent').innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Job Information</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>Job ID:</strong></td><td>#${jobId.slice(0, 8)}</td></tr>
+                        <tr><td><strong>Status:</strong></td><td><span class="badge bg-info">Processing</span></td></tr>
+                        <tr><td><strong>Created:</strong></td><td>Dec 25, 2023 14:30</td></tr>
+                        <tr><td><strong>Estimated Completion:</strong></td><td>Dec 25, 2023 15:00</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6>Print Settings</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>Color:</strong></td><td>Black & White</td></tr>
+                        <tr><td><strong>Paper Size:</strong></td><td>A4</td></tr>
+                        <tr><td><strong>Orientation:</strong></td><td>Portrait</td></tr>
+                        <tr><td><strong>Double Sided:</strong></td><td>No</td></tr>
+                    </table>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-12">
+                    <h6>Cost Breakdown</h6>
+                    <table class="table table-sm">
+                        <tr><td>Base Cost (5 pages):</td><td>₹10.00</td></tr>
+                        <tr><td>Service Fee:</td><td>₹2.00</td></tr>
+                        <tr><td class="border-top"><strong>Total:</strong></td><td class="border-top"><strong>₹12.00</strong></td></tr>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        modal.show();
+    }
+    
+    function cancelJob(jobId) {
+        jobToCancel = jobId;
+        const modal = new bootstrap.Modal(document.getElementById('cancelJobModal'));
+        modal.show();
+    }
+    
+    function downloadReceipt(jobId) {
+        // In a real implementation, this would download the receipt
+        window.location.href = `/print-jobs/${jobId}/receipt/`;
+    }
+    
+    function reprintJob(jobId) {
+        // In a real implementation, this would initiate a reprint
+        if (confirm('Do you want to print this file again? You will be charged the current rate.')) {
+            window.location.href = `/print-jobs/${jobId}/reprint/`;
+        }
+    }
+    
+    function clearFilters() {
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('dateFilter').value = '';
+        document.getElementById('searchInput').value = '';
+        // In a real implementation, this would reload the page without filters
+        window.location.href = window.location.pathname;
+    }
+    
+    // Confirm cancel job
+    document.getElementById('confirmCancel').addEventListener('click', function() {
+        if (jobToCancel) {
+            // In a real implementation, this would make an AJAX request
+            window.location.href = `/print-jobs/${jobToCancel}/cancel/`;
+        }
+    });
+    
+    // Real-time status updates (mock)
+    function updateJobStatuses() {
+        const processingJobs = document.querySelectorAll('tr[data-job-id]');
+        processingJobs.forEach(row => {
+            const statusBadge = row.querySelector('.badge');
+            if (statusBadge && statusBadge.textContent.includes('Processing')) {
+                // Simulate random status updates
+                if (Math.random() > 0.95) {
+                    statusBadge.className = 'badge bg-success';
+                    statusBadge.innerHTML = '<i class="fas fa-check me-1"></i>Completed';
+                }
+            }
+        });
+    }
+    
+    // Update statuses every 30 seconds
+    setInterval(updateJobStatuses, 30000);
+    
+    // Search and filter functionality
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const fileName = row.querySelector('td:nth-child(2) strong').textContent.toLowerCase();
+            const printerName = row.querySelector('td:nth-child(3) strong').textContent.toLowerCase();
+            
+            if (fileName.includes(searchTerm) || printerName.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Status filter
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        const selectedStatus = this.value.toLowerCase();
+        const rows = document.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const status = row.querySelector('.badge').textContent.toLowerCase();
+            if (!selectedStatus || status.includes(selectedStatus)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table td {
+        vertical-align: middle;
+    }
+    
+    .btn-group .btn {
+        margin-right: 2px;
+    }
+    
+    .badge {
+        font-size: 0.8em;
+    }
+    
+    .fa-spin {
+        animation: fa-spin 2s infinite linear;
+    }
+    
+    @keyframes fa-spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+{% endblock %}

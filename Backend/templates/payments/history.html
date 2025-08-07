@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment History - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-history"></i> Payment History</h2>
+                <div class="wallet-balance">
+                    <span class="badge bg-success fs-6">
+                        <i class="fas fa-wallet"></i> Wallet: ${{ wallet_balance|floatformat:2 }}
+                    </span>
+                </div>
+            </div>
+
+            {% if payments %}
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Description</th>
+                                        <th>Type</th>
+                                        <th>Method</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for payment in payments %}
+                                    <tr>
+                                        <td>{{ payment.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>{{ payment.description }}</td>
+                                        <td>
+                                            {% if payment.payment_type == 'credit' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-plus"></i> Credit
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-minus"></i> Debit
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <i class="fas fa-{% if payment.payment_method == 'card' %}credit-card{% elif payment.payment_method == 'paypal' %}paypal{% else %}wallet{% endif %}"></i>
+                                            {{ payment.payment_method|title }}
+                                        </td>
+                                        <td>
+                                            {% if payment.payment_type == 'credit' %}
+                                                <span class="text-success">+${{ payment.amount|floatformat:2 }}</span>
+                                            {% else %}
+                                                <span class="text-danger">-${{ payment.amount|floatformat:2 }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if payment.status == 'completed' %}
+                                                <span class="badge bg-success">Completed</span>
+                                            {% elif payment.status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Failed</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No Payment History</h4>
+                    <p class="text-muted">You haven't made any payments yet.</p>
+                    <a href="{% url 'web:wallet' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Money to Wallet
+                    </a>
+                </div>
+            {% endif %}
+
+            <div class="mt-4">
+                <a href="{% url 'web:dashboard' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+                <a href="{% url 'web:wallet' %}" class="btn btn-primary">
+                    <i class="fas fa-wallet"></i> Manage Wallet
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

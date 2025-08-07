@@ -1,0 +1,394 @@
+{% extends 'web/base.html' %}
+
+{% block title %}Upload File - PrintSmart{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>
+                <i class="fas fa-cloud-upload-alt me-2 text-primary"></i>Upload File
+            </h2>
+            <p class="text-muted">Upload your documents and get them printed at nearby locations</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Upload Form -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-upload me-2"></i>Select File to Upload
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="uploadForm">
+                        {% csrf_token %}
+                        
+                        <!-- Drag & Drop Zone -->
+                        <div class="upload-zone border-2 border-dashed border-primary rounded p-5 text-center mb-4" id="uploadZone">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                            <h5>Drag & Drop your file here</h5>
+                            <p class="text-muted">or click to browse files</p>
+                            <input type="file" 
+                                   class="form-control d-none" 
+                                   id="file" 
+                                   name="file" 
+                                   accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                                   required>
+                            <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('file').click()">
+                                <i class="fas fa-folder-open me-2"></i>Browse Files
+                            </button>
+                        </div>
+                        
+                        <!-- File Info (Hidden initially) -->
+                        <div id="fileInfo" class="alert alert-info d-none">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <i class="fas fa-file fa-2x" id="fileIcon"></i>
+                                </div>
+                                <div class="col">
+                                    <h6 class="mb-1" id="fileName"></h6>
+                                    <p class="mb-0">
+                                        <span id="fileSize"></span> • 
+                                        <span id="fileType"></span>
+                                    </p>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- File Details -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">
+                                    <i class="fas fa-tag me-2"></i>File Name
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="name" 
+                                       name="name" 
+                                       placeholder="Enter a name for your file">
+                                <div class="form-text">Leave blank to use original filename</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="category" class="form-label">
+                                    <i class="fas fa-folder me-2"></i>Category
+                                </label>
+                                <select class="form-select" id="category" name="category">
+                                    <option value="">Select Category</option>
+                                    <option value="document">Document</option>
+                                    <option value="presentation">Presentation</option>
+                                    <option value="image">Image</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">
+                                <i class="fas fa-comment me-2"></i>Description (Optional)
+                            </label>
+                            <textarea class="form-control" 
+                                      id="description" 
+                                      name="description" 
+                                      rows="3" 
+                                      placeholder="Add a description for your file"></textarea>
+                        </div>
+                        
+                        <!-- Print Options -->
+                        <div class="mb-4">
+                            <h6><i class="fas fa-print me-2"></i>Print Immediately?</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="printNow" name="print_now">
+                                <label class="form-check-label" for="printNow">
+                                    Print this file after uploading
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Bar (Hidden initially) -->
+                        <div id="uploadProgress" class="d-none mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Uploading...</span>
+                                <span id="progressText">0%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" 
+                                     style="width: 0%" 
+                                     id="progressBar"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'web:files' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Files
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="uploadBtn" disabled>
+                                <i class="fas fa-cloud-upload-alt me-2"></i>Upload File
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Upload Guidelines -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Upload Guidelines
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h6>Supported File Types:</h6>
+                    <ul class="list-unstyled mb-3">
+                        <li><i class="fas fa-file-pdf text-danger me-2"></i>PDF Documents</li>
+                        <li><i class="fas fa-file-word text-primary me-2"></i>Word Documents (.doc, .docx)</li>
+                        <li><i class="fas fa-file-alt text-secondary me-2"></i>Text Files (.txt)</li>
+                        <li><i class="fas fa-file-image text-info me-2"></i>Images (.jpg, .png)</li>
+                    </ul>
+                    
+                    <h6>File Size Limits:</h6>
+                    <ul class="list-unstyled mb-3">
+                        <li><i class="fas fa-check text-success me-2"></i>Maximum: 50 MB</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Recommended: Under 10 MB</li>
+                    </ul>
+                    
+                    <h6>Print Quality Tips:</h6>
+                    <ul class="list-unstyled mb-3">
+                        <li><i class="fas fa-lightbulb text-warning me-2"></i>Use PDF for best quality</li>
+                        <li><i class="fas fa-lightbulb text-warning me-2"></i>Ensure text is readable</li>
+                        <li><i class="fas fa-lightbulb text-warning me-2"></i>Check margins and formatting</li>
+                    </ul>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-shield-alt me-2"></i>
+                        <strong>Privacy:</strong> Your files are encrypted and automatically deleted after 30 days.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Uploads -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Uploads
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_files %}
+                        {% for file in recent_files %}
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="flex-shrink-0 me-3">
+                                {% if file.file_type == 'pdf' %}
+                                    <i class="fas fa-file-pdf text-danger"></i>
+                                {% elif file.file_type == 'doc' %}
+                                    <i class="fas fa-file-word text-primary"></i>
+                                {% else %}
+                                    <i class="fas fa-file text-muted"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">{{ file.name|truncatechars:25 }}</h6>
+                                <small class="text-muted">{{ file.uploaded_at|timesince }} ago</small>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <a href="{% url 'web:file_detail' file.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center">No recent uploads</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('file');
+        const fileInfo = document.getElementById('fileInfo');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadProgress = document.getElementById('uploadProgress');
+        
+        // Drag and drop functionality
+        uploadZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('bg-light');
+        });
+        
+        uploadZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.classList.remove('bg-light');
+        });
+        
+        uploadZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('bg-light');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        // File input change
+        fileInput.addEventListener('change', function(e) {
+            if (this.files.length > 0) {
+                handleFileSelect(this.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            // Show file info
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            document.getElementById('fileType').textContent = file.type || 'Unknown';
+            
+            // Set file icon
+            const fileIcon = document.getElementById('fileIcon');
+            const extension = file.name.split('.').pop().toLowerCase();
+            
+            if (extension === 'pdf') {
+                fileIcon.className = 'fas fa-file-pdf fa-2x text-danger';
+            } else if (['doc', 'docx'].includes(extension)) {
+                fileIcon.className = 'fas fa-file-word fa-2x text-primary';
+            } else if (['jpg', 'jpeg', 'png'].includes(extension)) {
+                fileIcon.className = 'fas fa-file-image fa-2x text-info';
+            } else if (extension === 'txt') {
+                fileIcon.className = 'fas fa-file-alt fa-2x text-secondary';
+            } else {
+                fileIcon.className = 'fas fa-file fa-2x text-muted';
+            }
+            
+            // Auto-fill name if empty
+            const nameInput = document.getElementById('name');
+            if (!nameInput.value) {
+                nameInput.value = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+            }
+            
+            // Show file info and enable upload button
+            fileInfo.classList.remove('d-none');
+            uploadBtn.disabled = false;
+            
+            // Hide upload zone text
+            uploadZone.innerHTML = `
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h5 class="text-success">File Selected</h5>
+                <p class="text-muted">Click upload to continue</p>
+            `;
+        }
+        
+        function clearFile() {
+            fileInput.value = '';
+            fileInfo.classList.add('d-none');
+            uploadBtn.disabled = true;
+            
+            // Reset upload zone
+            uploadZone.innerHTML = `
+                <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                <h5>Drag & Drop your file here</h5>
+                <p class="text-muted">or click to browse files</p>
+                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('file').click()">
+                    <i class="fas fa-folder-open me-2"></i>Browse Files
+                </button>
+            `;
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Form submission with progress
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            uploadProgress.classList.remove('d-none');
+            uploadBtn.disabled = true;
+            
+            // Simulate upload progress (in real implementation, use XMLHttpRequest)
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 95) progress = 95;
+                
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressText').textContent = Math.round(progress) + '%';
+                
+                if (progress >= 95) {
+                    clearInterval(progressInterval);
+                    
+                    // Complete upload
+                    setTimeout(() => {
+                        document.getElementById('progressBar').style.width = '100%';
+                        document.getElementById('progressText').textContent = '100%';
+                        
+                        // Submit form normally
+                        setTimeout(() => {
+                            this.submit();
+                        }, 500);
+                    }, 500);
+                }
+            }, 100);
+        });
+        
+        // Make clearFile globally accessible
+        window.clearFile = clearFile;
+    });
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-zone {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .upload-zone:hover {
+        background-color: #f8f9fa !important;
+        border-color: #0d6efd !important;
+    }
+    
+    .upload-zone.bg-light {
+        background-color: #e9ecef !important;
+        border-color: #28a745 !important;
+    }
+    
+    .progress-bar-animated {
+        animation: progress-bar-stripes 1s linear infinite;
+    }
+    
+    @keyframes progress-bar-stripes {
+        0% {
+            background-position: 1rem 0;
+        }
+        100% {
+            background-position: 0 0;
+        }
+    }
+</style>
+{% endblock %}
